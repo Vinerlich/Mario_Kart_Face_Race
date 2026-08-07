@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mario Kart Face Race</title>
+    <link rel="stylesheet" href="./css/style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <!-- Menu Inicial de Seleção de Personagem -->
+    <div id="menu-screen">
+        <h1>Selecione seu Piloto</h1>
+        <div class="character-grid">
+            <button class="char-btn" data-char="mario">🔴 Mario</button>
+            <button class="char-btn" data-char="luigi">🟢 Luigi</button>
+            <button class="char-btn" data-char="peach">👑 Peach</button>
+            <button class="char-btn" data-char="daisy">🌼 Daisy</button>
+            <button class="char-btn" data-char="yoshi">🦖 Yoshi</button>
+            <button class="char-btn" data-char="toad">🍄 Toad</button>
+            <button class="char-btn" data-char="bowser">🐢 Bowser</button>
+            <button class="char-btn" data-char="wario">🟡 Wario</button>
+            <button class="char-btn" data-char="donkey_kong">🦍 Donkey Kong</button>
+            <button class="char-btn custom-btn" data-char="custom">👤 Upload Próprio</button>
+        </div>
+
+        <!-- Painel de Upload (Apenas para opção Custom) -->
+        <div id="custom-upload-panel" style="display: none;">
+            <h3>Upload de fotos customizadas:</h3>
+            <label>Neutro: <input type="file" id="img-neutro" accept="image/*"></label>
+            <label>Feliz: <input type="file" id="img-feliz" accept="image/*"></label>
+            <label>Triste: <input type="file" id="img-triste" accept="image/*"></label>
+        </div>
+
+        <button id="btn-start" style="display: none;">INICIAR CORRIDA 🏎️</button>
+    </div>
+
+    <!-- HUD durante o jogo -->
+    <div id="hud-game" style="display: none;">
+        <h2 id="status">Piloto Pronto! Controles: WASD / Setas | Teclas 1, 2, 3 (Alternar Rostos)</h2>
+    </div>
+
+    <script type="module" src="./js/script.js"></script>
+</body>
+</html>
