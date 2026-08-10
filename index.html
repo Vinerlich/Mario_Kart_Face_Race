@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mario Kart Face Race</title>
+    <title>Mario Kart Face Race Game 3D</title>
+    
+    <!-- Fonte Gamer Alegre -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Import Map do Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -14,38 +22,76 @@
     </script>
 </head>
 <body>
+
     <div id="game-container"></div>
-    
-    <!-- Menu Inicial de Seleção de Personagem -->
+
+    <!-- HUD DE JOGO -->
+    <div id="hud-game">
+        <div class="hud-item">🚩 VOLTA: <span id="lap-num">1</span> / 3</div>
+        <div class="hud-item">🪙 MOEDAS: <span id="coin-num">0</span></div>
+        <div class="hud-item">❓ CUBOS: <span id="cube-num">0</span></div>
+        <div class="hud-item">🍄 COGUMELOS: <span id="mushroom-num">0</span></div>
+        <div class="hud-item">❤️ VIDAS: <span id="lives-num">❤️❤️❤️</span></div>
+    </div>
+
+    <!-- MINI-MAPA -->
+    <div id="minimap-container">
+        <canvas id="minimap" width="160" height="160"></canvas>
+    </div>
+
+    <!-- VELOCÍMETRO -->
+    <div id="speedometer-container">
+        <div class="speed-dial">
+            <div id="speed-needle"></div>
+            <div class="speed-center-cap"></div>
+        </div>
+        <div class="speed-text"><span id="speed-value">0</span> <small>KM/H</small></div>
+    </div>
+
+    <!-- TELA DO MENU PRINCIPAL -->
     <div id="menu-screen">
-        <h1>Selecione seu Piloto</h1>
-        <div class="character-grid">
-            <button class="char-btn" data-char="mario">🔴 Mario</button>
+        <h1 class="game-title">
+            <span class="icon-bounce">🏎️</span> 
+            MARIO KART <span class="highlight-title">FACE RACE 3D</span> 
+            <span class="icon-bounce alt">🏁</span>
+        </h1>
+
+        <!-- SELEÇÃO DE CIRCUITO -->
+        <p class="subtitle">🏎️ Escolha o Circuito:</p>
+        <div class="track-selection">
+            <button class="track-btn active" data-track="easy">🟢 Oval (Fácil)</button>
+            <button class="track-btn" data-track="medium">🟡 Clássica (Média)</button>
+            <button class="track-btn" data-track="hard">🔴 Serpente (Difícil)</button>
+        </div>
+
+        <p class="subtitle">🍄 Escolha o seu piloto favorito:</p>
+        <div class="char-selection">
+            <button class="char-btn active" data-char="mario">🔴 Mario</button>
             <button class="char-btn" data-char="luigi">🟢 Luigi</button>
             <button class="char-btn" data-char="peach">👑 Peach</button>
             <button class="char-btn" data-char="daisy">🌼 Daisy</button>
             <button class="char-btn" data-char="yoshi">🦖 Yoshi</button>
             <button class="char-btn" data-char="toad">🍄 Toad</button>
-            <button class="char-btn" data-char="bowser">🐢 Bowser</button>
-            <button class="char-btn" data-char="wario">🟡 Wario</button>
-            <button class="char-btn" data-char="donkey_kong">🦍 Donkey Kong</button>
-            <button class="char-btn custom-btn" data-char="custom">👤 Upload Próprio</button>
+            <button class="char-btn" data-char="bowser">🔥 Bowser</button>
+            <button class="char-btn" data-char="wario">⚡ Wario</button>
+            <button class="char-btn" data-char="donkey_kong">🍌 DK</button>
+            <button class="char-btn" data-char="custom">📷 Customizado</button>
         </div>
 
-        <!-- Painel de Upload (Apenas para opção Custom) -->
-        <div id="custom-upload-panel" style="display: none;">
-            <h3>Upload de fotos customizadas:</h3>
-            <label>Neutro: <input type="file" id="img-neutro" accept="image/*"></label>
-            <label>Feliz: <input type="file" id="img-feliz" accept="image/*"></label>
-            <label>Triste: <input type="file" id="img-triste" accept="image/*"></label>
+        <div id="custom-upload-panel">
+            <label>😐 Rosto Neutro: <input type="file" id="img-neutro" accept="image/*"></label>
+            <label>😃 Rosto Feliz: <input type="file" id="img-feliz" accept="image/*"></label>
+            <label>😭 Rosto Triste: <input type="file" id="img-triste" accept="image/*"></label>
         </div>
 
-        <button id="btn-start" style="display: none;">INICIAR CORRIDA 🏎️</button>
+        <button id="btn-start" class="btn-action">🎮 JOGAR AGORA!</button>
     </div>
 
-    <!-- HUD durante o jogo -->
-    <div id="hud-game" style="display: none;">
-        <h2 id="status">Piloto Pronto! Controles: WASD / Setas | Teclas 1, 2, 3 (Alternar Rostos)</h2>
+    <!-- TELA DE VITÓRIA -->
+    <div id="victory-screen">
+        <h2>VOCÊ VENCEU! 🏆</h2>
+        <p class="victory-msg">🎉 Parabéns! Você completou todas as voltas em 1º lugar!</p>
+        <button id="btn-restart" class="btn-action">🔄 JOGAR NOVAMENTE</button>
     </div>
 
     <script type="module" src="./js/script.js"></script>

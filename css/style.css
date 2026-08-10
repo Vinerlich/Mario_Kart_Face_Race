@@ -1,7 +1,8 @@
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    user-select: none;
 }
 
 body, html {
@@ -9,103 +10,354 @@ body, html {
     height: 100%;
     overflow: hidden;
     background-color: #000;
-    font-family: Arial, sans-serif;
+    font-family: 'Outfit', sans-serif;
 }
 
 #game-container {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
+/* --- TELA DE MENU PRINCIPAL --- */
 #menu-screen {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.85);
-    padding: 30px;
-    border-radius: 15px;
-    color: #fff;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(30, 20, 80, 0.95), rgba(10, 5, 35, 0.98));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
     text-align: center;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    max-width: 650px;
-    width: 90%;
 }
 
-#menu-screen h1 {
-    margin-bottom: 15px;
-    font-size: 1.8rem;
-}
-
-.character-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+.game-title {
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+    color: #ffea00;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    line-height: 1.15;
+    margin-bottom: 6px;
+    width: 100%;
+    max-width: 950px;
+    text-shadow: 
+        3px 3px 0px #ff6600,
+        6px 6px 0px #cc0000,
+        9px 9px 0px #550000,
+        12px 12px 15px rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 12px;
-    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.highlight-title {
+    background: linear-gradient(180deg, #00ffff 0%, #0088ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(3px 3px 0px #002266);
+}
+
+.icon-bounce {
+    display: inline-block;
+    animation: bounce 1.8s infinite ease-in-out;
+    font-size: 0.9em;
+}
+
+.icon-bounce.alt { animation-delay: 0.9s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(-8deg); }
+}
+
+.subtitle {
+    font-weight: 700;
+    font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+    margin: 12px 0 8px 0;
+    color: #00ffcc;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+}
+
+/* Seleção de Pistas */
+.track-selection {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.track-btn {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    border: 2px solid #ffea00;
+    border-radius: 12px;
+    background: rgba(20, 20, 40, 0.8);
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.track-btn:hover {
+    transform: scale(1.05);
+    background: #ffea00;
+    color: #000;
+}
+
+.track-btn.active {
+    background: #ffea00;
+    color: #000;
+    box-shadow: 0 0 15px #ffea00;
+}
+
+/* Seleção de Personagens */
+.char-selection {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    max-width: 780px;
+    width: 100%;
+    margin-bottom: 20px;
 }
 
 .char-btn {
-    padding: 12px;
-    font-size: 0.95rem;
-    font-weight: bold;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    padding: clamp(8px, 1.2vw, 12px) clamp(14px, 1.8vw, 20px);
+    font-size: clamp(0.85rem, 1.4vw, 1rem);
+    border: 3px solid #00ffff;
+    border-radius: 16px;
+    background: rgba(15, 25, 60, 0.75);
+    color: white;
     cursor: pointer;
-    border: 2px solid #555;
-    border-radius: 8px;
-    background: #222;
-    color: #fff;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-.char-btn:hover, .char-btn.active {
-    background: #ffeb3b;
+.char-btn:hover {
+    transform: translateY(-4px) scale(1.06);
+    background: #00ffff;
     color: #000;
-    border-color: #fff;
-    transform: scale(1.03);
+    box-shadow: 0 0 20px #00ffff;
 }
 
-.custom-btn {
-    grid-column: span 3;
-    background: #333;
-    border-color: #ffeb3b;
+.char-btn.active {
+    border-color: #ffea00;
+    background: linear-gradient(180deg, #ffea00 0%, #ff9900 100%);
+    color: #000;
+    box-shadow: 0 0 25px #ffea00, inset 0 2px 0 #ffffff;
+    transform: scale(1.08);
 }
 
 #custom-upload-panel {
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 20px;
-    text-align: left;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 15px;
-    border-radius: 8px;
-}
-
-#btn-start {
-    margin-top: 10px;
-    padding: 12px 25px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    cursor: pointer;
-    background: #4caf50;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.75);
+    padding: 14px 20px;
+    border-radius: 16px;
+    border: 3px dashed #ffea00;
+    margin-bottom: 18px;
     width: 100%;
-    transition: background 0.2s;
+    max-width: 480px;
 }
 
-#btn-start:hover {
-    background: #45a049;
-}
-
-#hud-game {
-    position: absolute;
-    top: 20px;
-    left: 20px;
+#custom-upload-panel label {
+    font-weight: 700;
+    font-size: clamp(0.85rem, 1.8vw, 0.95rem);
     color: #fff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    background: rgba(0, 0, 0, 0.6);
-    padding: 12px 20px;
-    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+#custom-upload-panel input[type="file"] {
+    font-size: 0.8rem;
+    color: #fff;
+    max-width: 60%;
+}
+
+.btn-action {
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    letter-spacing: 1px;
+    padding: clamp(12px, 1.8vw, 16px) clamp(30px, 4vw, 50px);
+    font-size: clamp(1.2rem, 2.8vw, 1.6rem);
+    color: white;
+    background: linear-gradient(180deg, #28a745 0%, #1e7e34 100%);
+    border: 3px solid #85e085;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 0 #145222, 0 12px 20px rgba(0,0,0,0.6);
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 0 #145222, 0 15px 25px rgba(40, 167, 69, 0.6);
+}
+
+.btn-action:active {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 #145222;
+}
+
+/* --- HUD DE JOGO --- */
+#hud-game {
+    display: none;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    color: white;
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    font-size: clamp(14px, 2.2vw, 18px);
+    letter-spacing: 1px;
+    z-index: 10;
+    flex-direction: column;
+    gap: 6px;
     pointer-events: none;
+}
+
+.hud-item {
+    background: rgba(0, 0, 0, 0.75);
+    padding: 6px 14px;
+    border-radius: 12px;
+    border-left: 5px solid #ffea00;
+    text-shadow: 2px 2px 4px #000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+/* --- MINI-MAPA --- */
+#minimap-container {
+    display: none;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 140px;
+    height: 140px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 3px solid #00ffff;
+    border-radius: 16px;
+    z-index: 10;
+    box-shadow: 0 0 15px rgba(0,255,255,0.4);
+    pointer-events: none;
+    overflow: hidden;
+}
+
+#minimap {
+    width: 100%;
+    height: 100%;
+}
+
+/* --- VELOCÍMETRO --- */
+#speedometer-container {
+    display: none;
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 110px;
+    height: 110px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 4px solid #ffea00;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(255, 234, 0, 0.3);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.speed-dial {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+#speed-needle {
+    position: absolute;
+    bottom: 50%;
+    left: calc(50% - 2px);
+    width: 4px;
+    height: 30px;
+    background: #ff3300;
+    border-radius: 2px;
+    transform-origin: bottom center;
+    transform: rotate(-120deg);
+    transition: transform 0.05s ease-out;
+    box-shadow: 0 0 8px #ff3300;
+}
+
+.speed-center-cap {
+    position: absolute;
+    top: calc(50% - 5px);
+    left: calc(50% - 5px);
+    width: 10px;
+    height: 10px;
+    background: #ffffff;
+    border-radius: 50%;
+}
+
+.speed-text {
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    color: #00ffcc;
+    font-size: 1rem;
+    margin-top: -12px;
+}
+
+.speed-text small {
+    font-size: 0.55rem;
+    color: #fff;
+}
+
+/* --- TELA DE VITÓRIA --- */
+#victory-screen {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 5, 25, 0.92);
+    color: white;
+    z-index: 100;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+#victory-screen h2 {
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    color: #ffea00;
+    margin-bottom: 15px;
+    text-shadow: 4px 4px 0px #cc0000, 0 0 30px #ffea00;
+}
+
+.victory-msg {
+    font-weight: 700;
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    margin-bottom: 30px;
+    color: #00ffcc;
 }
