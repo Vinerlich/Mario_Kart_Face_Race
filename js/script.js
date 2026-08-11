@@ -104,6 +104,7 @@ scene.background = new THREE.Color(0x87ceeb);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -159,12 +160,40 @@ let currentTrackKey = 'medium';
 let trackCurve, trackMesh, trackCenterPoints;
 const trackWidth = 28;
 
+// Textura Xadrez da Pista para corrigir a cor preta
+function createCheckeredTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const size = 16;
+    
+    for (let x = 0; x < canvas.width; x += size) {
+        for (let y = 0; y < canvas.height; y += size) {
+            ctx.fillStyle = (x / size + y / size) % 2 === 0 ? '#ffffff' : '#333333';
+            ctx.fillRect(x, y, size, size);
+        }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(20, 1);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+}
+
 function buildTrack(layoutKey) {
     if (trackMesh) scene.remove(trackMesh);
     
     trackCurve = new THREE.CatmullRomCurve3(trackLayouts[layoutKey], true);
     const trackGeo = new THREE.TubeGeometry(trackCurve, 200, trackWidth / 2, 8, false);
-    const trackMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+    
+    const trackMat = new THREE.MeshStandardMaterial({ 
+        color: 0x555555, 
+        roughness: 0.8,
+        map: createCheckeredTexture() 
+    });
+    
     trackMesh = new THREE.Mesh(trackGeo, trackMat);
     trackMesh.scale.set(1, 0.01, 1);
     trackMesh.position.y = 0.01;
@@ -181,6 +210,7 @@ document.querySelectorAll('.track-btn').forEach(btn => {
         e.target.classList.add('active');
         currentTrackKey = e.target.getAttribute('data-track');
         buildTrack(currentTrackKey);
+        setTimeout(() => createBarriersForTrack(), 50);
     });
 });
 
@@ -201,7 +231,6 @@ function createDollarTexture() {
     return texture;
 }
 
-// Textura da Rampa de Turbo
 function createRampTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
@@ -209,7 +238,6 @@ function createRampTexture() {
     ctx.fillStyle = '#ff3300'; ctx.fillRect(0, 0, 256, 256);
     ctx.fillStyle = '#ffea00';
     
-    // Setas Amarelas de Impulso
     for (let y = 30; y < 256; y += 80) {
         ctx.beginPath();
         ctx.moveTo(128, y);
@@ -277,7 +305,6 @@ function spawnRewardItem(pt, itemType) {
     itemBoxes.push({ group: meshGroup, active: true, type: itemType });
 }
 
-// Rampa com Estilização Turbo 3D
 function createRamp(pt, tangent) {
     const rampGroup = new THREE.Group();
     const rampGeo = new THREE.BoxGeometry(7, 1.4, 5);
@@ -454,7 +481,6 @@ function updateMinimap() {
     if (!gameActive) return;
     minimapCtx.clearRect(0, 0, 160, 160);
 
-    // Desenha Traçado da Pista
     minimapCtx.beginPath();
     minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     minimapCtx.lineWidth = 10;
@@ -467,7 +493,6 @@ function updateMinimap() {
     minimapCtx.closePath();
     minimapCtx.stroke();
 
-    // Desenha Bots (Bolinhas Coloridas)
     aiKarts.forEach(ai => {
         const pos = ai.group.position;
         const mx = 80 + (pos.x / 180) * 70;
@@ -478,7 +503,6 @@ function updateMinimap() {
         minimapCtx.fill();
     });
 
-    // Desenha Jogador Principal (Bolinha Amarela)
     const pPos = kartGroup.position;
     const pmx = 80 + (pPos.x / 180) * 70;
     const pmy = 80 + (pPos.z / 180) * 70;
@@ -491,13 +515,40 @@ function updateMinimap() {
     minimapCtx.stroke();
 }
 
-// 9. Movimentação, Rampas com Super Salto e Mecânicas
-const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, s: false, a: false, d: false };
-let speed = 0, angle = 0, verticalSpeed = 0, isJumping = false, isHit = false, boostTimer = 0;
+// 9. Movimentação e Controles
+const keys = { 
+    ArrowUp: false, 
+    ArrowDown: false, 
+    ArrowLeft: false, 
+    ArrowRight: false, 
+    w: false, 
+    s: false, 
+    a: false, 
+    d: false 
+};
+
+let speed = 0, angle = 0, verticalSpeed = 0, isJumping = false, boostTimer = 0;
 let coinsCount = 0, cubesCount = 0, mushroomsCount = 0, playerLives = 3;
 
 window.addEventListener('keydown', (e) => { if (e.key in keys) keys[e.key] = true; });
 window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
+
+function bindTouchControl(elementId, keyName) {
+    const btn = document.getElementById(elementId);
+    if (!btn) return;
+    
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; }, { passive: false });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; }, { passive: false });
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); keys[keyName] = true; });
+    btn.addEventListener('mouseup', (e) => { e.preventDefault(); keys[keyName] = false; });
+}
+
+bindTouchControl('btn-left', 'ArrowLeft');
+bindTouchControl('btn-right', 'ArrowRight');
+bindTouchControl('btn-up', 'ArrowUp');
+bindTouchControl('btn-down', 'ArrowDown');
+bindTouchControl('btn-accelerate', 'ArrowUp');
+bindTouchControl('btn-brake', 'ArrowDown');
 
 function updateHUD() {
     document.getElementById('coin-num').innerText = coinsCount;
@@ -506,14 +557,26 @@ function updateHUD() {
     document.getElementById('lives-num').innerText = "❤️".repeat(playerLives);
 }
 
+function updateSpeedometer() {
+    const kmh = Math.round(Math.abs(speed) * 220);
+    const speedValueElem = document.getElementById('speed-value');
+    const speedNeedleElem = document.getElementById('speed-needle');
+    
+    if (speedValueElem) speedValueElem.innerText = kmh;
+    if (speedNeedleElem) {
+        const rotationDegrees = -120 + Math.min(kmh, 160) * 1.5;
+        speedNeedleElem.style.transform = `rotate(${rotationDegrees}deg)`;
+    }
+}
+
 function checkCollisions() {
     const kartPos = kartGroup.position;
 
     ramps.forEach(ramp => {
         if (kartPos.distanceTo(ramp.position) < ramp.radius && !isJumping) {
             isJumping = true;
-            verticalSpeed = 0.55; // Super Pulo
-            boostTimer = 45;       // Impulso de Velocidade na Rampa
+            verticalSpeed = 0.55;
+            boostTimer = 45;
             sounds.playJumpSound();
         }
     });
@@ -528,6 +591,51 @@ function checkCollisions() {
             else if (item.type === 'mushroom') { mushroomsCount++; boostTimer = 90; }
             updateHUD();
             setTimeout(() => { item.active = true; item.group.visible = true; }, 5000);
+        }
+    });
+}
+
+// --- SISTEMA DE BARREIRAS DE PNEUS E COLISÃO NAS BORDAS ---
+const barriers = [];
+
+function createBarriersForTrack() {
+    barriers.forEach(b => scene.remove(b));
+    barriers.length = 0;
+
+    const points = trackCurve.getPoints(150);
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const tireGeo = new THREE.CylinderGeometry(1.2, 1.2, 1.5, 12);
+
+    points.forEach((pt, idx) => {
+        if (idx % 3 === 0) {
+            const tangent = trackCurve.getTangent(idx / 150);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 1));
+            const leftTire = new THREE.Mesh(tireGeo, tireMat);
+            leftTire.position.set(leftPos.x, 0.75, leftPos.z);
+            scene.add(leftTire);
+            barriers.push({ position: leftPos, radius: 1.5 });
+
+            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 1));
+            const rightTire = new THREE.Mesh(tireGeo, tireMat);
+            rightTire.position.set(rightPos.x, 0.75, rightPos.z);
+            scene.add(rightTire);
+            barriers.push({ position: rightPos, radius: 1.5 });
+        }
+    });
+}
+
+createBarriersForTrack();
+
+function checkBoundaryCollisions() {
+    const kartPos = kartGroup.position;
+    barriers.forEach(barrier => {
+        if (kartPos.distanceTo(barrier.position) < (barrier.radius + 1.2)) {
+            speed = -0.1;
+            sounds.playHitSound();
+            const pushDir = kartPos.clone().sub(barrier.position).normalize();
+            kartGroup.position.add(pushDir.multiplyScalar(0.5));
         }
     });
 }
@@ -556,7 +664,9 @@ function updateKart() {
     kartGroup.translateZ(speed);
 
     checkCollisions();
+    checkBoundaryCollisions();
     sounds.updateEngine(speed / 0.45);
+    updateSpeedometer();
 
     const cameraOffset = new THREE.Vector3(0, 6, -11).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
     camera.position.copy(kartGroup.position).add(cameraOffset);
@@ -588,6 +698,7 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
 animate();

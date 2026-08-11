@@ -3,6 +3,7 @@
     margin: 0;
     padding: 0;
     user-select: none;
+    -webkit-user-select: none;
 }
 
 body, html {
@@ -11,6 +12,7 @@ body, html {
     overflow: hidden;
     background-color: #000;
     font-family: 'Outfit', sans-serif;
+    touch-action: manipulation;
 }
 
 #game-container {
@@ -329,6 +331,58 @@ body, html {
     color: #fff;
 }
 
+/* --- CONTROLES MOBILE / TOUCH --- */
+#mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 110px;
+    z-index: 99;
+    pointer-events: none;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.steer-side, .action-side {
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+}
+
+.control-btn {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    transition: transform 0.05s ease, background-color 0.1s ease;
+    cursor: pointer;
+}
+
+.control-btn:active {
+    transform: scale(0.92);
+    background: rgba(255, 215, 0, 0.7);
+    color: #000;
+}
+
+#btn-accelerate {
+    background: rgba(46, 139, 87, 0.6);
+}
+
+#btn-brake {
+    background: rgba(220, 20, 60, 0.6);
+}
+
 /* --- TELA DE VITÓRIA --- */
 #victory-screen {
     display: none;
@@ -360,4 +414,119 @@ body, html {
     font-size: clamp(1.1rem, 2.5vw, 1.4rem);
     margin-bottom: 30px;
     color: #00ffcc;
+}
+
+/* --- RESPONSIVIDADE PARA DISPOSITIVOS MÓVEIS --- */
+@media (max-width: 900px), (pointer: coarse) {
+    #mobile-controls {
+        display: flex;
+    }
+
+    #minimap-container {
+        top: 10px;
+        right: 10px;
+        transform: scale(0.85);
+        transform-origin: top right;
+    }
+
+    #speedometer-container {
+        bottom: 140px;
+        right: 15px;
+        transform: scale(0.8);
+        transform-origin: bottom right;
+    }
+
+    #hud-game {
+        top: 10px;
+        left: 10px;
+        font-size: 14px;
+        gap: 6px;
+    }
+
+    .hud-item {
+        padding: 4px 10px;
+    }
+
+    #menu-screen {
+        padding: 15px;
+        justify-content: flex-start;
+        overflow-y: auto;
+    }
+
+    .game-title {
+        font-size: 1.8rem;
+    }
+
+    .char-selection, .track-selection {
+        gap: 8px;
+    }
+
+    .char-btn, .track-btn {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+}
+
+/* --- CONTROLES MOBILE COMPACTOS --- */
+#mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    padding: 0 10px;
+    z-index: 999;
+    pointer-events: none;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.steer-side, .action-side {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    pointer-events: auto;
+}
+
+.vertical-steer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Botões menores e mais discretos (Reduzidos para 46px) */
+.control-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    background: rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+}
+
+.control-btn:active {
+    transform: scale(0.9);
+    background: rgba(255, 215, 0, 0.7);
+    color: #000;
+}
+
+#btn-accelerate {
+    background: rgba(46, 139, 87, 0.5);
+}
+
+#btn-brake {
+    background: rgba(220, 20, 60, 0.5);
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+    #mobile-controls {
+        display: flex;
+    }
 }

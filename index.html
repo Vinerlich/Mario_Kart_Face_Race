@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta tag ajustada para travar zoom em telas mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mario Kart Face Race Game 3D</title>
-    
+
     <!-- Fonte Gamer Alegre -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Outfit:wght@700;900&display=swap"
+        rel="stylesheet">
 
     <link rel="stylesheet" href="./css/style.css">
 
@@ -21,6 +24,7 @@
         }
     </script>
 </head>
+
 <body>
 
     <div id="game-container"></div>
@@ -48,11 +52,30 @@
         <div class="speed-text"><span id="speed-value">0</span> <small>KM/H</small></div>
     </div>
 
+    <!-- CONTROLES MOBILE / TOUCH COMPACTOS -->
+    <div id="mobile-controls">
+        <!-- Direcional Esquerdo Compacto -->
+        <div class="steer-side">
+            <button id="btn-left" class="control-btn">◀</button>
+            <div class="vertical-steer">
+                <button id="btn-up" class="control-btn">▲</button>
+                <button id="btn-down" class="control-btn">▼</button>
+            </div>
+            <button id="btn-right" class="control-btn">▶</button>
+        </div>
+
+        <!-- Botões de Ação Compactos à Direita -->
+        <div class="action-side">
+            <button id="btn-brake" class="control-btn">🛑</button>
+            <button id="btn-accelerate" class="control-btn">🚀</button>
+        </div>
+    </div>
+
     <!-- TELA DO MENU PRINCIPAL -->
     <div id="menu-screen">
         <h1 class="game-title">
-            <span class="icon-bounce">🏎️</span> 
-            MARIO KART <span class="highlight-title">FACE RACE 3D</span> 
+            <span class="icon-bounce">🏎️</span>
+            MARIO KART <span class="highlight-title">FACE RACE 3D</span>
             <span class="icon-bounce alt">🏁</span>
         </h1>
 
@@ -96,4 +119,5 @@
 
     <script type="module" src="./js/script.js"></script>
 </body>
+
 </html>
