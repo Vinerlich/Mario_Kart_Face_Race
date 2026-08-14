@@ -251,9 +251,8 @@ body, html {
     pointer-events: auto;
 }
 
-/* Botão do Booster integrado no painel de cogumelos da HUD */
 #hud-booster-btn {
-    display: none; /* Só aparece quando atingir 10 cogumelos */
+    display: none;
     background: linear-gradient(180deg, #ff3300 0%, #cc0000 100%);
     border: 2px solid #ffea00;
     border-radius: 8px;
@@ -436,7 +435,7 @@ body, html {
     }
 }
 
-/* --- CONTROLES MOBILE / TOUCH (CONTROLADO VIA JS) --- */
+/* --- CONTROLES MOBILE / TOUCH --- */
 #mobile-controls {
     display: none;
     position: fixed;

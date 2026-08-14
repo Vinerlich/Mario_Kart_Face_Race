@@ -78,6 +78,21 @@ class SoundEngine {
         osc.stop(this.ctx.currentTime + 0.25);
     }
 
+    playShootSound() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+    }
+
     playLapSound() {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -157,31 +172,284 @@ const trackLayouts = {
 };
 
 let currentTrackKey = 'medium';
-let trackCurve, trackMesh, trackCenterPoints;
+let trackCurve, trackMesh, trackMat, trackCenterPoints;
+const snowMoundsGroup = new THREE.Group();
+const meltingPropsGroup = new THREE.Group(); 
+scene.add(snowMoundsGroup);
+scene.add(meltingPropsGroup);
 const trackWidth = 28;
 
-function buildTrack(layoutKey) {
-    if (trackMesh) scene.remove(trackMesh);
-    
-    trackCurve = new THREE.CatmullRomCurve3(trackLayouts[layoutKey], true);
-    const trackGeo = new THREE.TubeGeometry(trackCurve, 200, trackWidth / 2, 8, false);
-    
-    const trackMat = new THREE.MeshStandardMaterial({ 
-        color: 0x444444, 
-        roughness: 0.8
+// --- SISTEMA DE DISPARO DE CASCOS ---
+const activeShells = [];
+
+function shootShell() {
+    if (cubesCount <= 0) return;
+    cubesCount--; 
+    updateHUD();
+    sounds.playShootSound();
+
+    const shellGeo = new THREE.SphereGeometry(0.6, 16, 16);
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.2 }); 
+    const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+
+    const forwardOffset = new THREE.Vector3(0, 0.5, 2.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+    shellMesh.position.copy(kartGroup.position).add(forwardOffset);
+
+    scene.add(shellMesh);
+    activeShells.push({
+        mesh: shellMesh,
+        direction: new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle),
+        speed: 0.95,
+        lifeTime: 120
     });
-    
-    trackMesh = new THREE.Mesh(trackGeo, trackMat);
-    trackMesh.scale.set(1, 0.01, 1);
-    trackMesh.position.y = 0.01;
-    scene.add(trackMesh);
-
-    trackCenterPoints = trackCurve.getPoints(200);
 }
-buildTrack(currentTrackKey);
 
-// Criação da Linha de Largada e Chegada limpa e visível
+function updateShells() {
+    for (let i = activeShells.length - 1; i >= 0; i--) {
+        const shell = activeShells[i];
+        shell.mesh.position.addScaledVector(shell.direction, shell.speed);
+        shell.lifeTime--;
+
+        aiKarts.forEach(ai => {
+            if (shell.mesh.position.distanceTo(ai.group.position) < 2.5) {
+                ai.speed = 0.0001;
+                scene.remove(shell.mesh);
+                activeShells.splice(i, 1);
+                sounds.playHitSound();
+            }
+        });
+
+        if (shell.lifeTime <= 0) {
+            scene.remove(shell.mesh);
+            activeShells.splice(i, 1);
+        }
+    }
+}
+
+// Inserir botão de disparar casco dinamicamente na HUD se não existir
+if (!document.getElementById('hud-shell-btn')) {
+    const hudContainer = document.getElementById('hud-game');
+    if (hudContainer) {
+        const shellBtn = document.createElement('div');
+        shellBtn.id = 'hud-shell-btn';
+        shellBtn.innerHTML = '🐢 DISPARAR';
+        shellBtn.style.cssText = `
+            display: none; position: absolute; top: 180px; left: 20px;
+            background: linear-gradient(135deg, #00aa00, #00ff66); color: #fff;
+            padding: 8px 14px; border-radius: 12px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 2px solid #fff; z-index: 99;
+            font-family: Arial, sans-serif; font-size: 14px; text-align: center;
+        `;
+        shellBtn.addEventListener('click', shootShell);
+        hudContainer.appendChild(shellBtn);
+    }
+}
+
+// --- CENÁRIO DE COLINAS 3D ESTILO MUNDO DO MARIO ---
+const horizonProps = [];
+
+function createDistantScenery() {
+    horizonProps.forEach(p => scene.remove(p));
+    horizonProps.length = 0;
+
+    const hillMat = new THREE.MeshLambertMaterial({ color: 0x38b000, roughness: 0.9 });
+    const mountainMat = new THREE.MeshLambertMaterial({ color: 0x4a5759, roughness: 0.8 });
+
+    for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        const radius = 220 + Math.random() * 30;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+
+        const isMountain = (i % 3 === 0);
+        const scale = 25 + Math.random() * 15;
+        const geo = isMountain ? 
+            new THREE.ConeGeometry(scale, scale * 1.2, 5) : 
+            new THREE.SphereGeometry(scale, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+
+        const mesh = new THREE.Mesh(geo, isMountain ? mountainMat : hillMat);
+        mesh.position.set(x, 0, z);
+        if (!isMountain) mesh.scale.set(1.5, 0.6, 1.5);
+
+        scene.add(mesh);
+        horizonProps.push(mesh);
+    }
+}
+
+// --- SISTEMA DE PARTÍCULAS CLIMÁTICAS ---
+let weatherParticles = null;
+let currentWeatherType = 'sol';
+
+function setupWeatherSystem(type) {
+    if (weatherParticles) {
+        scene.remove(weatherParticles);
+        weatherParticles.geometry.dispose();
+        weatherParticles.material.dispose();
+        weatherParticles = null;
+    }
+
+    currentWeatherType = type;
+    const particleCount = 1000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 200;
+        positions[i + 1] = Math.random() * 50;
+        positions[i + 2] = (Math.random() - 0.5) * 200;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    let material;
+
+    if (type === 'chuva') {
+        material = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.6, transparent: true, opacity: 0.6 });
+    } else if (type === 'neve') {
+        material = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 });
+    } else if (type === 'calor') {
+        material = new THREE.PointsMaterial({ color: 0xffaa00, size: 0.8, transparent: true, opacity: 0.4 });
+    } else {
+        return; 
+    }
+
+    weatherParticles = new THREE.Points(geometry, material);
+    scene.add(weatherParticles);
+}
+
+function updateWeatherParticles() {
+    if (!weatherParticles) return;
+    const positions = weatherParticles.geometry.attributes.position.array;
+
+    for (let i = 1; i < positions.length; i += 3) {
+        if (currentWeatherType === 'chuva') {
+            positions[i] -= 2.5; 
+            if (positions[i] < 0) positions[i] = 50;
+        } else if (currentWeatherType === 'neve') {
+            positions[i] -= 0.3; 
+            positions[i - 1] += Math.sin(Date.now() * 0.002 + i) * 0.05; 
+            if (positions[i] < 0) positions[i] = 50;
+        } else if (currentWeatherType === 'calor') {
+            positions[i] += 0.2; 
+            if (positions[i] > 30) positions[i] = 0;
+        }
+    }
+    weatherParticles.geometry.attributes.position.needsUpdate = true;
+}
+
+// --- TUBOS VERDES CLÁSSICOS NAS MARGENS ---
+const marioProps = [];
+
+function createMarioEnvironmentProps() {
+    marioProps.forEach(prop => scene.remove(prop));
+    marioProps.length = 0;
+
+    const greenPipeMat = new THREE.MeshStandardMaterial({ color: 0x00aa00, roughness: 0.3 });
+    const pipeRimMat = new THREE.MeshStandardMaterial({ color: 0x00cc00, roughness: 0.2 });
+
+    const pipeBodyGeo = new THREE.CylinderGeometry(1.5, 1.3, 4, 16);
+    const pipeRimGeo = new THREE.CylinderGeometry(1.7, 1.7, 0.8, 16);
+
+    const points = trackCurve.getPoints(50);
+    points.forEach((pt, idx) => {
+        if (idx % 8 === 0) {
+            const tangent = trackCurve.getTangent(idx / 50);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+            
+            const sideMultiplier = (idx % 16 === 0) ? 16.0 : -16.0;
+            const propPos = pt.clone().add(normal.multiplyScalar(sideMultiplier));
+
+            const pipeGroup = new THREE.Group();
+            const body = new THREE.Mesh(pipeBodyGeo, greenPipeMat);
+            body.position.y = 2;
+            const rim = new THREE.Mesh(pipeRimGeo, pipeRimMat);
+            rim.position.y = 3.8;
+            pipeGroup.add(body, rim);
+            
+            pipeGroup.position.set(propPos.x, 0, propPos.z);
+            scene.add(pipeGroup);
+            marioProps.push(pipeGroup);
+        }
+    });
+}
+
+// FAIXA XADREZ NAS BORDAS + PILHAS DE PNEUS
+const barriers = [];
+
+function createBarriersForTrack() {
+    barriers.forEach(b => {
+        if (b.mesh) scene.remove(b.mesh);
+    });
+    barriers.length = 0;
+
+    const points = trackCurve.getPoints(400);
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+    const tireMat = new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x333333 });
+    const edgeGeo = new THREE.BoxGeometry(1.5, 0.04, (trackWidth / 400) * 16);
+
+    points.forEach((pt, idx) => {
+        if (idx < points.length - 1) {
+            const tangent = trackCurve.getTangent(idx / 400);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+            const angle = Math.atan2(tangent.x, tangent.z);
+            const currentMat = (idx % 2 === 0) ? whiteMat : blackMat;
+
+            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 - 0.2));
+            const leftEdge = new THREE.Mesh(edgeGeo, currentMat);
+            leftEdge.position.set(leftPos.x, 0.03, leftPos.z);
+            leftEdge.rotation.y = angle;
+            scene.add(leftEdge);
+            barriers.push({ mesh: leftEdge });
+
+            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 - 0.2));
+            const rightEdge = new THREE.Mesh(edgeGeo, currentMat);
+            rightEdge.position.set(rightPos.x, 0.03, rightPos.z);
+            rightEdge.rotation.y = angle;
+            scene.add(rightEdge);
+            barriers.push({ mesh: rightEdge });
+        }
+    });
+
+    const tirePoints = trackCurve.getPoints(200);
+    const tireGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.0, 16);
+
+    tirePoints.forEach((pt, idx) => {
+        if (idx % 2 === 0) {
+            const tangent = trackCurve.getTangent(idx / 200);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
+            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
+
+            let safeLeft = true;
+            let safeRight = true;
+
+            trackCenterPoints.forEach(centerPt => {
+                if (leftPos.distanceTo(centerPt) < trackWidth / 2 + 0.5) safeLeft = false;
+                if (rightPos.distanceTo(centerPt) < trackWidth / 2 + 0.5) safeRight = false;
+            });
+
+            if (safeLeft) {
+                const leftTire = new THREE.Mesh(tireGeo, tireMat);
+                leftTire.position.set(leftPos.x, 0.45, leftPos.z);
+                scene.add(leftTire);
+                barriers.push({ mesh: leftTire });
+            }
+
+            if (safeRight) {
+                const rightTire = new THREE.Mesh(tireGeo, tireMat);
+                rightTire.position.set(rightPos.x, 0.45, rightPos.z);
+                scene.add(rightTire);
+                barriers.push({ mesh: rightTire });
+            }
+        }
+    });
+}
+
+// Criação da Linha de Largada e Chegada com tamanho perfeito
+let finishLineMesh = null;
 function createStartFinishLine() {
+    if (finishLineMesh) scene.remove(finishLineMesh);
+
     const startPt = trackCurve.getPoint(0);
     const tangent = trackCurve.getTangent(0);
     const angle = Math.atan2(tangent.x, tangent.z);
@@ -204,33 +472,129 @@ function createStartFinishLine() {
     }
 
     const texture = new THREE.CanvasTexture(canvas);
-    const planeGeo = new THREE.PlaneGeometry(trackWidth - 0.5, 3.5);
+    const planeGeo = new THREE.PlaneGeometry(trackWidth - 2.5, 3.5);
     const planeMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, depthTest: false });
-    const finishLineMesh = new THREE.Mesh(planeGeo, planeMat);
+    finishLineMesh = new THREE.Mesh(planeGeo, planeMat);
 
     finishLineMesh.rotation.x = -Math.PI / 2;
     finishLineMesh.position.set(startPt.x, 0.035, startPt.z);
-    finishLineMesh.rotation.z = angle; // Rotação corrigida para cruzar a pista de lado a lado
+    finishLineMesh.rotation.z = angle;
     scene.add(finishLineMesh);
 }
-createStartFinishLine();
 
-// Seleção de Pistas no Menu
-document.querySelectorAll('.track-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        const trackVal = e.currentTarget.getAttribute('data-track');
-        if (trackVal in trackLayouts) {
-            currentTrackKey = trackVal;
-        } else {
-            currentTrackKey = 'medium';
-        }
-        buildTrack(currentTrackKey);
-        createStartFinishLine();
-        setTimeout(() => createBarriersForTrack(), 50);
+function buildTrack(layoutKey) {
+    if (trackMesh) scene.remove(trackMesh);
+    
+    trackCurve = new THREE.CatmullRomCurve3(trackLayouts[layoutKey], true);
+    const trackGeo = new THREE.TubeGeometry(trackCurve, 200, trackWidth / 2, 8, false);
+    
+    trackMat = new THREE.MeshStandardMaterial({ 
+        color: 0x444444, 
+        roughness: 0.8
     });
-});
+    
+    trackMesh = new THREE.Mesh(trackGeo, trackMat);
+    trackMesh.scale.set(1, 0.01, 1);
+    trackMesh.position.y = 0.01;
+    scene.add(trackMesh);
+
+    trackCenterPoints = trackCurve.getPoints(200);
+
+    createStartFinishLine();
+    createBarriersForTrack();
+    createMarioEnvironmentProps();
+    createDistantScenery(); 
+}
+buildTrack(currentTrackKey);
+
+// --- GERAÇÃO DOS MONTINHOS DE NEVE NAS BORDAS ---
+function updateSnowMounds(isSnowActive) {
+    snowMoundsGroup.clear();
+    if (!isSnowActive) return;
+
+    const moundGeo = new THREE.SphereGeometry(1.5, 8, 6);
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const points = trackCurve.getPoints(100);
+
+    points.forEach((pt, idx) => {
+        if (idx % 4 === 0) {
+            const tangent = trackCurve.getTangent(idx / 100);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
+            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
+
+            const leftMound = new THREE.Mesh(moundGeo, moundMat);
+            leftMound.position.set(leftPos.x, 0.2, leftPos.z);
+            leftMound.scale.set(1.5, 0.8, 1.5);
+            snowMoundsGroup.add(leftMound);
+
+            const rightMound = new THREE.Mesh(moundGeo, moundMat);
+            rightMound.position.set(rightPos.x, 0.2, rightPos.z);
+            rightMound.scale.set(1.5, 0.8, 1.5);
+            snowMoundsGroup.add(rightMound);
+        }
+    });
+}
+
+// --- GERAÇÃO DOS OBJETOS DE CALOR NAS MARGENS ---
+function updateMeltingProps(isHeatActive) {
+    meltingPropsGroup.clear();
+    if (!isHeatActive) return;
+
+    const popsicleMat = new THREE.MeshStandardMaterial({ color: 0xff2255, roughness: 0.1 });
+    const puddleMat = new THREE.MeshBasicMaterial({ color: 0xff5588, transparent: true, opacity: 0.9 }); 
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c });
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.3 });
+
+    const points = trackCurve.getPoints(60);
+    points.forEach((pt, idx) => {
+        if (idx % 5 === 0) {
+            const tangent = trackCurve.getTangent(idx / 60);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+            
+            const side = (idx % 10 === 0) ? (trackWidth / 2 + 1.2) : -(trackWidth / 2 + 1.2);
+            const pos = pt.clone().add(normal.multiplyScalar(side));
+
+            if (idx % 10 === 0) {
+                const popGroup = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.8), popsicleMat);
+                body.position.y = 0.8;
+                body.scale.set(1.6, 0.4, 1.6);
+                
+                const stick = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.2), stickMat);
+                stick.position.set(0, 0.3, -0.3);
+                stick.rotation.x = 0.4;
+
+                const puddleGeo = new THREE.CircleGeometry(2.0, 16);
+                const puddle = new THREE.Mesh(puddleGeo, puddleMat);
+                puddle.rotation.x = -Math.PI / 2;
+                puddle.position.y = 0.03;
+
+                popGroup.add(body, stick, puddle);
+                popGroup.position.set(pos.x, 0, pos.z);
+                meltingPropsGroup.add(popGroup);
+            } else {
+                const coneGroup = new THREE.Group();
+                const coneGeo = new THREE.ConeGeometry(1.6, 2.2, 8);
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.set(0, 0.6, 0);
+                cone.rotation.z = 1.25;
+                cone.rotation.x = 0.2;
+
+                const puddleGeo = new THREE.CircleGeometry(1.8, 16);
+                const puddleMatCone = new THREE.MeshBasicMaterial({ color: 0xff7722, transparent: true, opacity: 0.85 });
+                const puddle = new THREE.Mesh(puddleGeo, puddleMatCone);
+                puddle.rotation.x = -Math.PI / 2;
+                puddle.position.y = 0.03;
+
+                coneGroup.add(cone, puddle);
+                coneGroup.position.set(pos.x, 0, pos.z);
+                meltingPropsGroup.add(coneGroup);
+            }
+        }
+    });
+}
 
 // 4. Texturas Dinâmicas e Itens
 function createDollarTexture() {
@@ -312,7 +676,8 @@ const itemBoxes = [];
 const obstacles = [];
 const ramps = [];
 
-function spawnRewardItem(pt, itemType) {
+function spawnRewardItem(tPos, itemType) {
+    const pt = trackCurve.getPoint(tPos);
     let meshGroup;
     if (itemType === 'coin') meshGroup = createCoinMesh();
     else if (itemType === 'mushroom') meshGroup = createMushroomMesh();
@@ -323,7 +688,9 @@ function spawnRewardItem(pt, itemType) {
     itemBoxes.push({ group: meshGroup, active: true, type: itemType });
 }
 
-function createRamp(pt, tangent) {
+function createRamp(tPos) {
+    const pt = trackCurve.getPoint(tPos);
+    const tangent = trackCurve.getTangent(tPos);
     const rampGroup = new THREE.Group();
     const rampGeo = new THREE.BoxGeometry(7, 1.4, 5);
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTexture, roughness: 0.3 });
@@ -339,7 +706,8 @@ function createRamp(pt, tangent) {
     ramps.push({ position: pt.clone(), radius: 4 });
 }
 
-function createOilSlick(pt) {
+function createOilSlick(tPos) {
+    const pt = trackCurve.getPoint(tPos);
     const oil = new THREE.Mesh(new THREE.CircleGeometry(3.5, 16), new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide }));
     oil.rotation.x = -Math.PI / 2;
     oil.position.set(pt.x, 0.04, pt.z);
@@ -347,12 +715,12 @@ function createOilSlick(pt) {
     obstacles.push({ mesh: oil, radius: 3.5 });
 }
 
-spawnRewardItem(trackCurve.getPoint(0.12), 'coin');
-spawnRewardItem(trackCurve.getPoint(0.38), 'mushroom');
-spawnRewardItem(trackCurve.getPoint(0.62), 'cube');
-spawnRewardItem(trackCurve.getPoint(0.82), 'coin');
-[0.25, 0.7].forEach(t => createRamp(trackCurve.getPoint(t), trackCurve.getTangent(t)));
-[0.3, 0.6].forEach(t => createOilSlick(trackCurve.getPoint(t)));
+spawnRewardItem(0.12, 'coin');
+spawnRewardItem(0.38, 'mushroom');
+spawnRewardItem(0.62, 'cube');
+spawnRewardItem(0.82, 'coin');
+[0.25, 0.7].forEach(t => createRamp(t));
+[0.3, 0.6].forEach(t => createOilSlick(t));
 
 // 5. Kart do Jogador e Acessórios
 let originalKartColor = 0xe60000;
@@ -418,13 +786,43 @@ function buildDetailed3DKart(color, isPlayer = false) {
 const kartGroup = buildDetailed3DKart(originalKartColor, true);
 scene.add(kartGroup);
 
-// Posicionamento tradicional: logo antes da linha de chegada (t = 0.99)
 let speed = 0, angle = 0, verticalSpeed = 0, isJumping = false, boostTimer = 0;
-const startPt = trackCurve.getPoint(0.99);
-const startTangent = trackCurve.getTangent(0.0);
-kartGroup.position.set(startPt.x, 0, startPt.z);
-kartGroup.rotation.y = Math.atan2(startTangent.x, startTangent.z);
-angle = kartGroup.rotation.y;
+let coinsCount = 0, cubesCount = 0, mushroomsCount = 0, playerLives = 3;
+let currentLap = 0;
+let passedHalfTrack = false;
+let currentDriftFactor = 1.0; 
+
+function resetPlayerPosition(trackKey) {
+    let tValue = 0.98; 
+    if (trackKey === 'hard') tValue = 0.985; 
+
+    const startPt = trackCurve.getPoint(tValue);
+    const startTangent = trackCurve.getTangent(0.0);
+    kartGroup.position.set(startPt.x, 0, startPt.z);
+    kartGroup.rotation.y = Math.atan2(startTangent.x, startTangent.z);
+    angle = kartGroup.rotation.y;
+    speed = 0;
+    currentLap = 0;
+    passedHalfTrack = false;
+}
+resetPlayerPosition(currentTrackKey);
+
+// Seleção de Pistas no Menu
+document.querySelectorAll('.track-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const trackVal = e.currentTarget.getAttribute('data-track');
+        if (trackVal in trackLayouts) {
+            currentTrackKey = trackVal;
+        } else {
+            currentTrackKey = 'medium';
+        }
+        buildTrack(currentTrackKey);
+        resetPlayerPosition(currentTrackKey);
+        updateHUD();
+    });
+});
 
 // 6. Inimigos IA
 const aiKarts = [];
@@ -441,7 +839,6 @@ createAIKarts();
 
 // 7. Personagens
 const textureLoader = new THREE.TextureLoader();
-const expressions = { neutro: null, feliz: null, triste: null };
 const characterAssets = {
     mario: { color: 0xe60000 }, luigi: { color: 0x00a000 }, peach: { color: 0xff69b4 },
     daisy: { color: 0xff9900 }, yoshi: { color: 0x32cd32 }, toad: { color: 0x0055ff },
@@ -449,7 +846,6 @@ const characterAssets = {
 };
 
 let selectedCharKey = 'mario';
-let currentExpression = 'neutro';
 
 function updatePlayerAccessories(charKey) {
     if (!playerAccessoriesGroup) return;
@@ -548,14 +944,17 @@ const keys = {
     w: false, 
     s: false, 
     a: false, 
-    d: false 
+    d: false,
+    Space: false
 };
 
-let coinsCount = 0, cubesCount = 0, mushroomsCount = 0, playerLives = 3;
-let currentLap = 0;
-let passedHalfTrack = false;
-
-window.addEventListener('keydown', (e) => { if (e.key in keys) keys[e.key] = true; });
+window.addEventListener('keydown', (e) => { 
+    if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        shootShell(); 
+    }
+    if (e.key in keys) keys[e.key] = true; 
+});
 window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
 
 function bindTouchControl(elementId, keyName) {
@@ -596,6 +995,15 @@ function updateHUD() {
     document.getElementById('mushroom-num').innerText = mushroomsCount;
     document.getElementById('lives-num').innerText = "❤️".repeat(playerLives);
 
+    const shellBtnElem = document.getElementById('hud-shell-btn');
+    if (shellBtnElem) {
+        if (cubesCount > 0) {
+            shellBtnElem.style.display = 'block';
+        } else {
+            shellBtnElem.style.display = 'none';
+        }
+    }
+
     if (hudBoosterBtn) {
         if (mushroomsCount >= 10) {
             hudBoosterBtn.style.display = 'block';
@@ -605,17 +1013,20 @@ function updateHUD() {
     }
 }
 
-function checkLapProgression() {
-    const kartPos = kartGroup.position;
-    const startPoint = trackCurve.getPoint(0);
-    const halfPoint = trackCurve.getPoint(0.5);
+// --- CONTROLE DE VOLTAS CORRIGIDO E ROBUSTO ---
+let lastProgressCheck = 0;
 
-    if (kartPos.distanceTo(startPoint) > 10) {
-        if (kartPos.distanceTo(halfPoint) < 8) {
-            passedHalfTrack = true;
-        }
-    } else {
-        if (passedHalfTrack && currentLap < 3) {
+function checkLapProgression() {
+    const progress = getTrackProgress(kartGroup.position);
+
+    // Registra se passou pela metade da pista (perto de 0.5)
+    if (progress > 0.45 && progress < 0.55) {
+        passedHalfTrack = true;
+    }
+
+    // Se passou pela linha de chegada (próximo de 0 ou 1) tendo passado pela metade antes
+    if ((progress < 0.05 || progress > 0.95) && passedHalfTrack) {
+        if (lastProgressCheck > 0.8) { // Garante que veio da reta final de forma contínua
             currentLap++;
             passedHalfTrack = false;
             sounds.playLapSound();
@@ -630,6 +1041,7 @@ function checkLapProgression() {
             }
         }
     }
+    lastProgressCheck = progress;
 }
 
 function updateSpeedometer() {
@@ -650,8 +1062,8 @@ function checkCollisions() {
     ramps.forEach(ramp => {
         if (kartPos.distanceTo(ramp.position) < ramp.radius && !isJumping) {
             isJumping = true;
-            verticalSpeed = 0.55;
-            boostTimer = 45;
+            verticalSpeed = 0.65; // Super pulo da rampa
+            boostTimer = 90;     // Turbina no ar!
             sounds.playJumpSound();
         }
     });
@@ -670,85 +1082,83 @@ function checkCollisions() {
     });
 }
 
-// --- FAIXA XADREZ NAS BORDAS + PILHAS DE PNEUS PERTO DA PISTA E SEGURAS ---
-const barriers = [];
+// --- CHECKPOINTS DE CLIMA E BIOMA ---
+let currentClima = 'sol';
 
-function createBarriersForTrack() {
-    barriers.forEach(b => {
-        if (b.mesh) scene.remove(b.mesh);
-    });
-    barriers.length = 0;
-
-    const points = trackCurve.getPoints(400);
-    
-    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-    const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
-    const tireMat = new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x333333 });
-    
-    const edgeGeo = new THREE.BoxGeometry(1.5, 0.04, (trackWidth / 400) * 16);
-
-    points.forEach((pt, idx) => {
-        if (idx < points.length - 1) {
-            const tangent = trackCurve.getTangent(idx / 400);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-            const angle = Math.atan2(tangent.x, tangent.z);
-
-            const currentMat = (idx % 2 === 0) ? whiteMat : blackMat;
-
-            // Esquerda (Xadrez)
-            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 - 0.2));
-            const leftEdge = new THREE.Mesh(edgeGeo, currentMat);
-            leftEdge.position.set(leftPos.x, 0.03, leftPos.z);
-            leftEdge.rotation.y = angle;
-            scene.add(leftEdge);
-            barriers.push({ mesh: leftEdge });
-
-            // Direita (Xadrez)
-            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 - 0.2));
-            const rightEdge = new THREE.Mesh(edgeGeo, currentMat);
-            rightEdge.position.set(rightPos.x, 0.03, rightPos.z);
-            rightEdge.rotation.y = angle;
-            scene.add(rightEdge);
-            barriers.push({ mesh: rightEdge });
+function updateEnvironment(progress) {
+    if (progress >= 0.0 && progress < 0.25 && currentClima !== 'sol') {
+        currentClima = 'sol';
+        scene.background.setHex(0x87ceeb);
+        groundMat.color.setHex(0x2e8b57);
+        dirLight.intensity = 1.0;
+        if (trackMat) {
+            trackMat.color.setHex(0x444444); 
+            trackMat.roughness = 0.8;
+            trackMat.metalness = 0.0;
         }
-    });
-
-    const tirePoints = trackCurve.getPoints(200);
-    const tireGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.0, 16);
-
-    tirePoints.forEach((pt, idx) => {
-        if (idx % 2 === 0) {
-            const tangent = trackCurve.getTangent(idx / 200);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
-            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
-
-            let safeLeft = true;
-            let safeRight = true;
-
-            trackCenterPoints.forEach(centerPt => {
-                if (leftPos.distanceTo(centerPt) < trackWidth / 2 + 0.5) safeLeft = false;
-                if (rightPos.distanceTo(centerPt) < trackWidth / 2 + 0.5) safeRight = false;
-            });
-
-            if (safeLeft) {
-                const leftTire = new THREE.Mesh(tireGeo, tireMat);
-                leftTire.position.set(leftPos.x, 0.45, leftPos.z);
-                scene.add(leftTire);
-                barriers.push({ mesh: leftTire });
-            }
-
-            if (safeRight) {
-                const rightTire = new THREE.Mesh(tireGeo, tireMat);
-                rightTire.position.set(rightPos.x, 0.45, rightPos.z);
-                scene.add(rightTire);
-                barriers.push({ mesh: rightTire });
-            }
+        updateSnowMounds(false);
+        updateMeltingProps(false);
+        setupWeatherSystem('sol');
+        currentDriftFactor = 1.0; 
+    } else if (progress >= 0.25 && progress < 0.5 && currentClima !== 'calor') {
+        currentClima = 'calor';
+        scene.background.setHex(0xffaa33); 
+        groundMat.color.setHex(0xd2b48c); 
+        dirLight.intensity = 1.4;
+        if (trackMat) {
+            trackMat.color.setHex(0x554433); 
+            trackMat.roughness = 0.7;
+            trackMat.metalness = 0.1;
         }
-    });
+        updateSnowMounds(false);
+        updateMeltingProps(true); 
+        setupWeatherSystem('calor');
+        currentDriftFactor = 1.0;
+    } else if (progress >= 0.5 && progress < 0.75 && currentClima !== 'chuva') {
+        currentClima = 'chuva';
+        scene.background.setHex(0x4a4e69);
+        groundMat.color.setHex(0x3a4d39);
+        dirLight.intensity = 0.6;
+        if (trackMat) {
+            trackMat.color.setHex(0x222222); 
+            trackMat.roughness = 0.15; 
+            trackMat.metalness = 0.5;  
+        }
+        updateSnowMounds(false);
+        updateMeltingProps(false);
+        setupWeatherSystem('chuva');
+        currentDriftFactor = 0.45; 
+    } else if (progress >= 0.75 && progress <= 1.0 && currentClima !== 'neve') {
+        currentClima = 'neve';
+        scene.background.setHex(0x1a1a2e);
+        groundMat.color.setHex(0xe0e0e0);
+        dirLight.intensity = 0.4;
+        if (trackMat) {
+            trackMat.color.setHex(0xcccccc); 
+            trackMat.roughness = 0.9;
+            trackMat.metalness = 0.2;
+        }
+        updateSnowMounds(true); 
+        updateMeltingProps(false);
+        setupWeatherSystem('neve');
+        currentDriftFactor = 0.3; 
+    }
 }
-createBarriersForTrack();
+
+function getTrackProgress(position) {
+    let closestT = 0;
+    let minDistance = 99999;
+    for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        const pt = trackCurve.getPoint(t);
+        const dist = position.distanceTo(pt);
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestT = t;
+        }
+    }
+    return closestT;
+}
 
 function checkBoundaryCollisions() {
     const kartPos = kartGroup.position;
@@ -772,6 +1182,8 @@ function checkBoundaryCollisions() {
     }
 }
 
+let currentSteeringAngle = 0;
+
 function updateKart() {
     if (!gameActive) return;
 
@@ -783,8 +1195,12 @@ function updateKart() {
     else speed *= 0.95;
 
     const turnFactor = 0.035 * (Math.abs(speed) / 0.45 + 0.3);
-    if (keys.ArrowLeft || keys.a) angle += turnFactor * (speed >= 0 ? 1 : -1);
-    if (keys.ArrowRight || keys.d) angle -= turnFactor * (speed >= 0 ? 1 : -1);
+    let targetSteering = 0;
+    if (keys.ArrowLeft || keys.a) targetSteering = turnFactor * (speed >= 0 ? 1 : -1);
+    if (keys.ArrowRight || keys.d) targetSteering = -turnFactor * (speed >= 0 ? 1 : -1);
+
+    currentSteeringAngle += (targetSteering - currentSteeringAngle) * (0.15 * currentDriftFactor);
+    angle += currentSteeringAngle;
 
     if (isJumping) {
         kartGroup.position.y += verticalSpeed;
@@ -794,6 +1210,9 @@ function updateKart() {
 
     kartGroup.rotation.y = angle;
     kartGroup.translateZ(speed);
+
+    const progress = getTrackProgress(kartGroup.position);
+    updateEnvironment(progress);
 
     checkCollisions();
     checkBoundaryCollisions();
@@ -818,11 +1237,15 @@ function updateAIKarts() {
     });
 }
 
+animate();
+
 function animate() {
     requestAnimationFrame(animate);
     itemBoxes.forEach(item => { if (item.active && item.group) item.group.rotation.y += 0.04; });
     updateAIKarts();
+    updateShells(); 
     updateKart();
+    updateWeatherParticles(); 
     updateMinimap();
     renderer.render(scene, camera);
 }
@@ -833,5 +1256,3 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
-
-animate();
