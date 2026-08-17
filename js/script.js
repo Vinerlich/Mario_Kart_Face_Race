@@ -116,58 +116,66 @@ const sounds = new SoundEngine();
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 3000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-document.getElementById('game-container').appendChild(renderer.domElement);
+
+const container = document.getElementById('game-container');
+if (container) {
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+}
 
 // 2. Iluminação
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(50, 80, 50);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(100, 150, 100);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-const groundGeo = new THREE.PlaneGeometry(600, 600);
+const groundGeo = new THREE.PlaneGeometry(3000, 3000);
 const groundMat = new THREE.MeshLambertMaterial({ color: 0x2e8b57 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.05;
 scene.add(ground);
 
-// 3. Sistema de Circuitos
+// 3. Circuitos
 const trackLayouts = {
     easy: [
-        new THREE.Vector3(60, 0, 0),
-        new THREE.Vector3(40, 0, 50),
-        new THREE.Vector3(-40, 0, 50),
-        new THREE.Vector3(-60, 0, 0),
-        new THREE.Vector3(-40, 0, -50),
-        new THREE.Vector3(40, 0, -50)
+        new THREE.Vector3(180, 0, 0),
+        new THREE.Vector3(140, 0, 110),
+        new THREE.Vector3(0, 0, 120),
+        new THREE.Vector3(-140, 0, 110),
+        new THREE.Vector3(-180, 0, 0),
+        new THREE.Vector3(-140, 0, -110),
+        new THREE.Vector3(0, 0, -120),
+        new THREE.Vector3(140, 0, -110)
     ],
     medium: [
-        new THREE.Vector3(80, 0, 0),
-        new THREE.Vector3(60, 0, 70),
-        new THREE.Vector3(0, 0, 90),
-        new THREE.Vector3(-60, 0, 60),
-        new THREE.Vector3(-90, 0, 0),
-        new THREE.Vector3(-60, 0, -60),
-        new THREE.Vector3(0, 0, -40),
-        new THREE.Vector3(50, 0, -70)
+        new THREE.Vector3(220, 0, 0),
+        new THREE.Vector3(160, 0, 160),
+        new THREE.Vector3(0, 0, 200),
+        new THREE.Vector3(-160, 0, 140),
+        new THREE.Vector3(-220, 0, 0),
+        new THREE.Vector3(-140, 0, -140),
+        new THREE.Vector3(0, 0, -90),
+        new THREE.Vector3(130, 0, -160)
     ],
     hard: [
-        new THREE.Vector3(90, 0, 0),
-        new THREE.Vector3(70, 0, 80),
-        new THREE.Vector3(10, 0, 40),
-        new THREE.Vector3(-50, 0, 85),
-        new THREE.Vector3(-95, 0, 10),
-        new THREE.Vector3(-40, 0, -30),
-        new THREE.Vector3(-80, 0, -85),
-        new THREE.Vector3(20, 0, -90),
-        new THREE.Vector3(75, 0, -45)
+        new THREE.Vector3(350, 0, 0),
+        new THREE.Vector3(280, 0, 280),
+        new THREE.Vector3(50, 0, 150),
+        new THREE.Vector3(-180, 0, 320),
+        new THREE.Vector3(-350, 0, 50),
+        new THREE.Vector3(-160, 0, -120),
+        new THREE.Vector3(-300, 0, -300),
+        new THREE.Vector3(80, 0, -320),
+        new THREE.Vector3(280, 0, -160)
     ]
 };
 
@@ -179,17 +187,50 @@ scene.add(snowMoundsGroup);
 scene.add(meltingPropsGroup);
 const trackWidth = 28;
 
-// --- SISTEMA DE DISPARO DE CASCOS ---
+// Arrays de Objetos
+const itemBoxes = [];
+const obstacles = [];
+const ramps = [];
 const activeShells = [];
+const activeBananas = [];
 
-function shootShell() {
+function clearTrackItems() {
+    itemBoxes.forEach(item => scene.remove(item.group));
+    itemBoxes.length = 0;
+
+    obstacles.forEach(obs => scene.remove(obs.mesh));
+    obstacles.length = 0;
+
+    ramps.forEach(ramp => scene.remove(ramp.group));
+    ramps.length = 0;
+
+    activeBananas.forEach(b => scene.remove(b.mesh));
+    activeBananas.length = 0;
+}
+
+// --- SISTEMA DE ITENS ---
+function dropBanana() {
+    sounds.playItemSound(0.8);
+    const bananaGeo = new THREE.CylinderGeometry(0.1, 0.4, 0.9, 8);
+    const bananaMat = new THREE.MeshStandardMaterial({ color: 0xffea00, roughness: 0.2 });
+    const bananaMesh = new THREE.Mesh(bananaGeo, bananaMat);
+    bananaMesh.rotation.z = Math.PI / 3;
+
+    const backOffset = new THREE.Vector3(0, 0.2, -2.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+    bananaMesh.position.copy(kartGroup.position).add(backOffset);
+
+    scene.add(bananaMesh);
+    activeBananas.push({ mesh: bananaMesh, radius: 1.8 });
+}
+
+function shootShell(isRed = false) {
     if (cubesCount <= 0) return;
     cubesCount--; 
     updateHUD();
     sounds.playShootSound();
 
     const shellGeo = new THREE.SphereGeometry(0.6, 16, 16);
-    const shellMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.2 }); 
+    const shellMat = new THREE.MeshStandardMaterial({ color: isRed ? 0xff0000 : 0x00ff00, roughness: 0.2 }); 
     const shellMesh = new THREE.Mesh(shellGeo, shellMat);
 
     const forwardOffset = new THREE.Vector3(0, 0.5, 2.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
@@ -198,15 +239,34 @@ function shootShell() {
     scene.add(shellMesh);
     activeShells.push({
         mesh: shellMesh,
+        isRed: isRed,
         direction: new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle),
         speed: 0.95,
-        lifeTime: 120
+        lifeTime: 140
     });
 }
 
 function updateShells() {
     for (let i = activeShells.length - 1; i >= 0; i--) {
         const shell = activeShells[i];
+
+        if (shell.isRed && aiKarts.length > 0) {
+            let closestAi = null;
+            let minDist = 999;
+            aiKarts.forEach(ai => {
+                const dist = shell.mesh.position.distanceTo(ai.group.position);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestAi = ai;
+                }
+            });
+
+            if (closestAi && minDist < 80) {
+                const targetDir = closestAi.group.position.clone().sub(shell.mesh.position).normalize();
+                shell.direction.lerp(targetDir, 0.1);
+            }
+        }
+
         shell.mesh.position.addScaledVector(shell.direction, shell.speed);
         shell.lifeTime--;
 
@@ -226,26 +286,82 @@ function updateShells() {
     }
 }
 
-// Inserir botão de disparar casco dinamicamente na HUD se não existir
-if (!document.getElementById('hud-shell-btn')) {
-    const hudContainer = document.getElementById('hud-game');
-    if (hudContainer) {
-        const shellBtn = document.createElement('div');
-        shellBtn.id = 'hud-shell-btn';
-        shellBtn.innerHTML = '🐢 DISPARAR';
-        shellBtn.style.cssText = `
-            display: none; position: absolute; top: 180px; left: 20px;
-            background: linear-gradient(135deg, #00aa00, #00ff66); color: #fff;
-            padding: 8px 14px; border-radius: 12px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 2px solid #fff; z-index: 99;
-            font-family: Arial, sans-serif; font-size: 14px; text-align: center;
-        `;
-        shellBtn.addEventListener('click', shootShell);
-        hudContainer.appendChild(shellBtn);
+function activateMushroomBoost() {
+    if (mushroomsCount >= 3) { 
+        mushroomsCount -= 3;
+        boostTimer = 150;
+        sounds.playItemSound(1.8);
+        updateHUD();
     }
 }
 
-// --- CENÁRIO DE COLINAS 3D ESTILO MUNDO DO MARIO ---
+// --- MONTAGEM DO HUD UNIFICADO (SEM FOGUETE REDUNDANTE) ---
+function createIntegratedHUD() {
+    const hudContainer = document.getElementById('hud-game');
+    if (!hudContainer) return;
+
+    hudContainer.innerHTML = `
+        <div id="unified-panel" style="
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.75); border: 2px solid #ffd700;
+            border-radius: 16px; padding: 12px 18px; color: #fff;
+            font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;
+            display: flex; flex-direction: column; gap: 8px; z-index: 100;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            min-width: 220px;
+        ">
+            <div>🚩 VOLTA: <span id="lap-num" style="color:#00ffff;">0 / 3</span></div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span>🍄 COGUMELOS: <span id="mushroom-num" style="color:#ffcc00;">0</span></span>
+                <button id="panel-booster-btn" style="
+                    background: #444; color: #888; border: 1px solid #666;
+                    border-radius: 8px; padding: 4px 8px; font-size: 11px; font-weight: bold;
+                    cursor: not-allowed; transition: all 0.2s; outline: none;
+                ">🚀 TURBO (0/3)</button>
+            </div>
+
+            <div>🪙 MOEDAS: <span id="coin-num" style="color:#ffd700;">0</span></div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span>❓ CUBOS: <span id="cube-num" style="color:#ff3366;">0</span></span>
+                <button id="panel-shell-btn" style="
+                    background: #444; color: #888; border: 1px solid #666;
+                    border-radius: 8px; padding: 4px 8px; font-size: 11px; font-weight: bold;
+                    cursor: not-allowed; transition: all 0.2s; outline: none;
+                ">🐢 DISPARAR</button>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span>🍌 ARMADILHA:</span>
+                <button id="panel-banana-btn" style="
+                    background: linear-gradient(135deg, #ffcc00, #ff9900); color: #000;
+                    border: 1px solid #fff; border-radius: 8px; padding: 4px 8px;
+                    font-size: 11px; font-weight: bold; cursor: pointer; outline: none;
+                ">🍌 BANANA (B)</button>
+            </div>
+
+            <div>❤️ VIDAS: <span id="lives-num">❤️❤️❤️</span></div>
+        </div>
+    `;
+
+    document.getElementById('panel-booster-btn').addEventListener('click', activateMushroomBoost);
+    document.getElementById('panel-shell-btn').addEventListener('click', () => {
+        if (cubesCount > 0) {
+            if (Math.random() > 0.5) shootShell(true);
+            else shootShell(false);
+        }
+    });
+    document.getElementById('panel-banana-btn').addEventListener('click', dropBanana);
+}
+
+createIntegratedHUD();
+
+// Remove o botão de foguete antigo do HTML móvel se ainda estiver presente
+const oldRocketBtn = document.getElementById('hud-booster-btn');
+if (oldRocketBtn) oldRocketBtn.remove();
+
+// --- CENÁRIO DE COLINAS 3D DINÂMICO ---
 const horizonProps = [];
 
 function createDistantScenery() {
@@ -255,14 +371,24 @@ function createDistantScenery() {
     const hillMat = new THREE.MeshLambertMaterial({ color: 0x38b000, roughness: 0.9 });
     const mountainMat = new THREE.MeshLambertMaterial({ color: 0x4a5759, roughness: 0.8 });
 
-    for (let i = 0; i < 24; i++) {
-        const angle = (i / 24) * Math.PI * 2;
-        const radius = 220 + Math.random() * 30;
+    let maxTrackRadius = 300;
+    if (trackCenterPoints) {
+        trackCenterPoints.forEach(pt => {
+            const dist = Math.hypot(pt.x, pt.z);
+            if (dist > maxTrackRadius) maxTrackRadius = dist;
+        });
+    }
+
+    const sceneryRadius = maxTrackRadius + 140;
+
+    for (let i = 0; i < 32; i++) {
+        const angle = (i / 32) * Math.PI * 2;
+        const radius = sceneryRadius + Math.random() * 50;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
 
         const isMountain = (i % 3 === 0);
-        const scale = 25 + Math.random() * 15;
+        const scale = 40 + Math.random() * 25;
         const geo = isMountain ? 
             new THREE.ConeGeometry(scale, scale * 1.2, 5) : 
             new THREE.SphereGeometry(scale, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -278,7 +404,8 @@ function createDistantScenery() {
 
 // --- SISTEMA DE PARTÍCULAS CLIMÁTICAS ---
 let weatherParticles = null;
-let currentWeatherType = 'sol';
+let currentWeatherType = null;
+let currentClima = 'sol';
 
 function setupWeatherSystem(type) {
     if (weatherParticles) {
@@ -289,14 +416,14 @@ function setupWeatherSystem(type) {
     }
 
     currentWeatherType = type;
-    const particleCount = 1000;
+    const particleCount = 1200;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 200;
+        positions[i] = (Math.random() - 0.5) * 180;
         positions[i + 1] = Math.random() * 50;
-        positions[i + 2] = (Math.random() - 0.5) * 200;
+        positions[i + 2] = (Math.random() - 0.5) * 180;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -317,27 +444,67 @@ function setupWeatherSystem(type) {
 }
 
 function updateWeatherParticles() {
-    if (!weatherParticles) return;
+    if (!weatherParticles || !kartGroup) return;
     const positions = weatherParticles.geometry.attributes.position.array;
+    const playerPos = kartGroup.position;
+    const areaSize = 180;
 
-    for (let i = 1; i < positions.length; i += 3) {
+    for (let i = 0; i < positions.length; i += 3) {
         if (currentWeatherType === 'chuva') {
-            positions[i] -= 2.5; 
-            if (positions[i] < 0) positions[i] = 50;
+            positions[i + 1] -= 2.5; 
+            if (positions[i + 1] < playerPos.y) positions[i + 1] = playerPos.y + 50;
         } else if (currentWeatherType === 'neve') {
-            positions[i] -= 0.3; 
-            positions[i - 1] += Math.sin(Date.now() * 0.002 + i) * 0.05; 
-            if (positions[i] < 0) positions[i] = 50;
+            positions[i + 1] -= 0.3; 
+            positions[i] += Math.sin(Date.now() * 0.002 + i) * 0.05; 
+            if (positions[i + 1] < playerPos.y) positions[i + 1] = playerPos.y + 50;
         } else if (currentWeatherType === 'calor') {
-            positions[i] += 0.2; 
-            if (positions[i] > 30) positions[i] = 0;
+            positions[i + 1] += 0.2; 
+            if (positions[i + 1] > playerPos.y + 40) positions[i + 1] = playerPos.y;
+        }
+
+        if (Math.abs(positions[i] - playerPos.x) > areaSize / 2) {
+            positions[i] = playerPos.x + (Math.random() - 0.5) * areaSize;
+        }
+        if (Math.abs(positions[i + 2] - playerPos.z) > areaSize / 2) {
+            positions[i + 2] = playerPos.z + (Math.random() - 0.5) * areaSize;
         }
     }
     weatherParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// --- TUBOS VERDES CLÁSSICOS NAS MARGENS ---
+// --- TUBOS VERDES E PORTAIS DE BLOCOS ---
 const marioProps = [];
+
+function createMarioBlockArch(tPos) {
+    const pt = trackCurve.getPoint(tPos);
+    const tangent = trackCurve.getTangent(tPos);
+    const angle = Math.atan2(tangent.x, tangent.z);
+    
+    const archGroup = new THREE.Group();
+    const brickMat = new THREE.MeshStandardMaterial({ color: 0xb22222, roughness: 0.6 });
+    const qBlockMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.2, metalness: 0.1 });
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x00aa00, roughness: 0.3 });
+    
+    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.2, 7.5, 16);
+    const leftPillar = new THREE.Mesh(pillarGeo, pipeMat);
+    leftPillar.position.set(-trackWidth / 2 + 1, 3.75, 0);
+    const rightPillar = new THREE.Mesh(pillarGeo, pipeMat);
+    rightPillar.position.set(trackWidth / 2 - 1, 3.75, 0);
+    archGroup.add(leftPillar, rightPillar);
+
+    const blockGeo = new THREE.BoxGeometry(2.0, 2.0, 2.0);
+    for (let i = -2; i <= 2; i++) {
+        const mat = (i % 2 === 0) ? qBlockMat : brickMat;
+        const block = new THREE.Mesh(blockGeo, mat);
+        block.position.set(i * 3.2, 8.5, 0);
+        archGroup.add(block);
+    }
+
+    archGroup.position.set(pt.x, 0, pt.z);
+    archGroup.rotation.y = angle;
+    scene.add(archGroup);
+    marioProps.push(archGroup);
+}
 
 function createMarioEnvironmentProps() {
     marioProps.forEach(prop => scene.remove(prop));
@@ -349,13 +516,13 @@ function createMarioEnvironmentProps() {
     const pipeBodyGeo = new THREE.CylinderGeometry(1.5, 1.3, 4, 16);
     const pipeRimGeo = new THREE.CylinderGeometry(1.7, 1.7, 0.8, 16);
 
-    const points = trackCurve.getPoints(50);
+    const points = trackCurve.getPoints(80);
     points.forEach((pt, idx) => {
         if (idx % 8 === 0) {
-            const tangent = trackCurve.getTangent(idx / 50);
+            const tangent = trackCurve.getTangent(idx / 80);
             const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
             
-            const sideMultiplier = (idx % 16 === 0) ? 16.0 : -16.0;
+            const sideMultiplier = (idx % 16 === 0) ? (trackWidth / 2 + 3) : -(trackWidth / 2 + 3);
             const propPos = pt.clone().add(normal.multiplyScalar(sideMultiplier));
 
             const pipeGroup = new THREE.Group();
@@ -370,6 +537,10 @@ function createMarioEnvironmentProps() {
             marioProps.push(pipeGroup);
         }
     });
+
+    createMarioBlockArch(0.2);
+    createMarioBlockArch(0.45);
+    createMarioBlockArch(0.7);
 }
 
 // FAIXA XADREZ NAS BORDAS + PILHAS DE PNEUS
@@ -381,15 +552,15 @@ function createBarriersForTrack() {
     });
     barriers.length = 0;
 
-    const points = trackCurve.getPoints(400);
+    const points = trackCurve.getPoints(600);
     const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
     const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
     const tireMat = new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x333333 });
-    const edgeGeo = new THREE.BoxGeometry(1.5, 0.04, (trackWidth / 400) * 16);
+    const edgeGeo = new THREE.BoxGeometry(1.5, 0.04, (trackWidth / 600) * 24);
 
     points.forEach((pt, idx) => {
         if (idx < points.length - 1) {
-            const tangent = trackCurve.getTangent(idx / 400);
+            const tangent = trackCurve.getTangent(idx / 600);
             const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
             const angle = Math.atan2(tangent.x, tangent.z);
             const currentMat = (idx % 2 === 0) ? whiteMat : blackMat;
@@ -410,12 +581,12 @@ function createBarriersForTrack() {
         }
     });
 
-    const tirePoints = trackCurve.getPoints(200);
+    const tirePoints = trackCurve.getPoints(300);
     const tireGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.0, 16);
 
     tirePoints.forEach((pt, idx) => {
         if (idx % 2 === 0) {
-            const tangent = trackCurve.getTangent(idx / 200);
+            const tangent = trackCurve.getTangent(idx / 300);
             const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
             const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
             const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 2.4));
@@ -445,7 +616,7 @@ function createBarriersForTrack() {
     });
 }
 
-// Criação da Linha de Largada e Chegada com tamanho perfeito
+// Linha de Largada/Chegada
 let finishLineMesh = null;
 function createStartFinishLine() {
     if (finishLineMesh) scene.remove(finishLineMesh);
@@ -473,130 +644,24 @@ function createStartFinishLine() {
 
     const texture = new THREE.CanvasTexture(canvas);
     const planeGeo = new THREE.PlaneGeometry(trackWidth - 2.5, 3.5);
-    const planeMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, depthTest: false });
-    finishLineMesh = new THREE.Mesh(planeGeo, planeMat);
+    
+    const planeMat = new THREE.MeshBasicMaterial({ 
+        map: texture, 
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+    });
 
+    finishLineMesh = new THREE.Mesh(planeGeo, planeMat);
     finishLineMesh.rotation.x = -Math.PI / 2;
-    finishLineMesh.position.set(startPt.x, 0.035, startPt.z);
+    finishLineMesh.position.set(startPt.x, 0.25, startPt.z);
     finishLineMesh.rotation.z = angle;
+    finishLineMesh.renderOrder = 2;
     scene.add(finishLineMesh);
 }
 
-function buildTrack(layoutKey) {
-    if (trackMesh) scene.remove(trackMesh);
-    
-    trackCurve = new THREE.CatmullRomCurve3(trackLayouts[layoutKey], true);
-    const trackGeo = new THREE.TubeGeometry(trackCurve, 200, trackWidth / 2, 8, false);
-    
-    trackMat = new THREE.MeshStandardMaterial({ 
-        color: 0x444444, 
-        roughness: 0.8
-    });
-    
-    trackMesh = new THREE.Mesh(trackGeo, trackMat);
-    trackMesh.scale.set(1, 0.01, 1);
-    trackMesh.position.y = 0.01;
-    scene.add(trackMesh);
-
-    trackCenterPoints = trackCurve.getPoints(200);
-
-    createStartFinishLine();
-    createBarriersForTrack();
-    createMarioEnvironmentProps();
-    createDistantScenery(); 
-}
-buildTrack(currentTrackKey);
-
-// --- GERAÇÃO DOS MONTINHOS DE NEVE NAS BORDAS ---
-function updateSnowMounds(isSnowActive) {
-    snowMoundsGroup.clear();
-    if (!isSnowActive) return;
-
-    const moundGeo = new THREE.SphereGeometry(1.5, 8, 6);
-    const moundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
-    const points = trackCurve.getPoints(100);
-
-    points.forEach((pt, idx) => {
-        if (idx % 4 === 0) {
-            const tangent = trackCurve.getTangent(idx / 100);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
-            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
-
-            const leftMound = new THREE.Mesh(moundGeo, moundMat);
-            leftMound.position.set(leftPos.x, 0.2, leftPos.z);
-            leftMound.scale.set(1.5, 0.8, 1.5);
-            snowMoundsGroup.add(leftMound);
-
-            const rightMound = new THREE.Mesh(moundGeo, moundMat);
-            rightMound.position.set(rightPos.x, 0.2, rightPos.z);
-            rightMound.scale.set(1.5, 0.8, 1.5);
-            snowMoundsGroup.add(rightMound);
-        }
-    });
-}
-
-// --- GERAÇÃO DOS OBJETOS DE CALOR NAS MARGENS ---
-function updateMeltingProps(isHeatActive) {
-    meltingPropsGroup.clear();
-    if (!isHeatActive) return;
-
-    const popsicleMat = new THREE.MeshStandardMaterial({ color: 0xff2255, roughness: 0.1 });
-    const puddleMat = new THREE.MeshBasicMaterial({ color: 0xff5588, transparent: true, opacity: 0.9 }); 
-    const stickMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c });
-    const coneMat = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.3 });
-
-    const points = trackCurve.getPoints(60);
-    points.forEach((pt, idx) => {
-        if (idx % 5 === 0) {
-            const tangent = trackCurve.getTangent(idx / 60);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-            
-            const side = (idx % 10 === 0) ? (trackWidth / 2 + 1.2) : -(trackWidth / 2 + 1.2);
-            const pos = pt.clone().add(normal.multiplyScalar(side));
-
-            if (idx % 10 === 0) {
-                const popGroup = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.8), popsicleMat);
-                body.position.y = 0.8;
-                body.scale.set(1.6, 0.4, 1.6);
-                
-                const stick = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.2), stickMat);
-                stick.position.set(0, 0.3, -0.3);
-                stick.rotation.x = 0.4;
-
-                const puddleGeo = new THREE.CircleGeometry(2.0, 16);
-                const puddle = new THREE.Mesh(puddleGeo, puddleMat);
-                puddle.rotation.x = -Math.PI / 2;
-                puddle.position.y = 0.03;
-
-                popGroup.add(body, stick, puddle);
-                popGroup.position.set(pos.x, 0, pos.z);
-                meltingPropsGroup.add(popGroup);
-            } else {
-                const coneGroup = new THREE.Group();
-                const coneGeo = new THREE.ConeGeometry(1.6, 2.2, 8);
-                const cone = new THREE.Mesh(coneGeo, coneMat);
-                cone.position.set(0, 0.6, 0);
-                cone.rotation.z = 1.25;
-                cone.rotation.x = 0.2;
-
-                const puddleGeo = new THREE.CircleGeometry(1.8, 16);
-                const puddleMatCone = new THREE.MeshBasicMaterial({ color: 0xff7722, transparent: true, opacity: 0.85 });
-                const puddle = new THREE.Mesh(puddleGeo, puddleMatCone);
-                puddle.rotation.x = -Math.PI / 2;
-                puddle.position.y = 0.03;
-
-                coneGroup.add(cone, puddle);
-                coneGroup.position.set(pos.x, 0, pos.z);
-                meltingPropsGroup.add(coneGroup);
-            }
-        }
-    });
-}
-
-// 4. Texturas Dinâmicas e Itens
+// Texturas e Geradores de Itens
 function createDollarTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
@@ -672,10 +737,6 @@ function createQuestionCubeMesh() {
     return new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.8, 1.8), new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3 }));
 }
 
-const itemBoxes = [];
-const obstacles = [];
-const ramps = [];
-
 function spawnRewardItem(tPos, itemType) {
     const pt = trackCurve.getPoint(tPos);
     let meshGroup;
@@ -703,7 +764,7 @@ function createRamp(tPos) {
     rampGroup.rotation.y = Math.atan2(tangent.x, tangent.z);
     scene.add(rampGroup);
 
-    ramps.push({ position: pt.clone(), radius: 4 });
+    ramps.push({ group: rampGroup, position: pt.clone(), radius: 4 });
 }
 
 function createOilSlick(tPos) {
@@ -715,14 +776,134 @@ function createOilSlick(tPos) {
     obstacles.push({ mesh: oil, radius: 3.5 });
 }
 
-spawnRewardItem(0.12, 'coin');
-spawnRewardItem(0.38, 'mushroom');
-spawnRewardItem(0.62, 'cube');
-spawnRewardItem(0.82, 'coin');
-[0.25, 0.7].forEach(t => createRamp(t));
-[0.3, 0.6].forEach(t => createOilSlick(t));
+function spawnDynamicTrackItems() {
+    clearTrackItems();
 
-// 5. Kart do Jogador e Acessórios
+    const rewardTypes = ['coin', 'cube', 'mushroom'];
+    for (let i = 0.08; i < 0.98; i += 0.08) {
+        const type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+        spawnRewardItem(i, type);
+    }
+
+    [0.15, 0.35, 0.55, 0.75, 0.90].forEach(t => createRamp(t));
+    [0.22, 0.42, 0.62, 0.72, 0.82, 0.87, 0.93].forEach(t => createOilSlick(t));
+}
+
+function buildTrack(layoutKey) {
+    if (trackMesh) scene.remove(trackMesh);
+    
+    trackCurve = new THREE.CatmullRomCurve3(trackLayouts[layoutKey], true);
+    const trackGeo = new THREE.TubeGeometry(trackCurve, 600, trackWidth / 2, 8, false);
+    
+    trackMat = new THREE.MeshStandardMaterial({ 
+        color: 0x444444, 
+        roughness: 0.8
+    });
+    
+    trackMesh = new THREE.Mesh(trackGeo, trackMat);
+    trackMesh.scale.set(1, 0.01, 1);
+    trackMesh.position.y = 0.01;
+    scene.add(trackMesh);
+
+    trackCenterPoints = trackCurve.getPoints(600);
+
+    createStartFinishLine();
+    createBarriersForTrack();
+    createMarioEnvironmentProps();
+    createDistantScenery(); 
+    spawnDynamicTrackItems();
+}
+
+// Montinhos de Neve nas bordas
+function updateSnowMounds(isSnowActive) {
+    snowMoundsGroup.clear();
+    if (!isSnowActive) return;
+
+    const moundGeo = new THREE.SphereGeometry(1.5, 8, 6);
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const points = trackCurve.getPoints(150);
+
+    points.forEach((pt, idx) => {
+        if (idx % 4 === 0) {
+            const tangent = trackCurve.getTangent(idx / 150);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+            const leftPos = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
+            const rightPos = pt.clone().sub(normal.clone().multiplyScalar(trackWidth / 2 + 1.2));
+
+            const leftMound = new THREE.Mesh(moundGeo, moundMat);
+            leftMound.position.set(leftPos.x, 0.2, leftPos.z);
+            leftMound.scale.set(1.5, 0.8, 1.5);
+            snowMoundsGroup.add(leftMound);
+
+            const rightMound = new THREE.Mesh(moundGeo, moundMat);
+            rightMound.position.set(rightPos.x, 0.2, rightPos.z);
+            rightMound.scale.set(1.5, 0.8, 1.5);
+            snowMoundsGroup.add(rightMound);
+        }
+    });
+}
+
+// Objetos de calor nas margens
+function updateMeltingProps(isHeatActive) {
+    meltingPropsGroup.clear();
+    if (!isHeatActive) return;
+
+    const popsicleMat = new THREE.MeshStandardMaterial({ color: 0xff2255, roughness: 0.1 });
+    const puddleMat = new THREE.MeshBasicMaterial({ color: 0xff5588, transparent: true, opacity: 0.9 }); 
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c });
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.3 });
+
+    const points = trackCurve.getPoints(100);
+    points.forEach((pt, idx) => {
+        if (idx % 5 === 0) {
+            const tangent = trackCurve.getTangent(idx / 100);
+            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+            
+            const side = (idx % 10 === 0) ? (trackWidth / 2 + 1.2) : -(trackWidth / 2 + 1.2);
+            const pos = pt.clone().add(normal.multiplyScalar(side));
+
+            if (idx % 10 === 0) {
+                const popGroup = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.8), popsicleMat);
+                body.position.y = 0.8;
+                body.scale.set(1.6, 0.4, 1.6);
+                
+                const stick = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.2), stickMat);
+                stick.position.set(0, 0.3, -0.3);
+                stick.rotation.x = 0.4;
+
+                const puddleGeo = new THREE.CircleGeometry(2.0, 16);
+                const puddle = new THREE.Mesh(puddleGeo, puddleMat);
+                puddle.rotation.x = -Math.PI / 2;
+                puddle.position.y = 0.03;
+
+                popGroup.add(body, stick, puddle);
+                popGroup.position.set(pos.x, 0, pos.z);
+                meltingPropsGroup.add(popGroup);
+            } else {
+                const coneGroup = new THREE.Group();
+                const coneGeo = new THREE.ConeGeometry(1.6, 2.2, 8);
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.set(0, 0.6, 0);
+                cone.rotation.z = 1.25;
+                cone.rotation.x = 0.2;
+
+                const puddleGeo = new THREE.CircleGeometry(1.8, 16);
+                const puddleMatCone = new THREE.MeshBasicMaterial({ color: 0xff7722, transparent: true, opacity: 0.85 });
+                const puddle = new THREE.Mesh(puddleGeo, puddleMatCone);
+                puddle.rotation.x = -Math.PI / 2;
+                puddle.position.y = 0.03;
+
+                coneGroup.add(cone, puddle);
+                coneGroup.position.set(pos.x, 0, pos.z);
+                meltingPropsGroup.add(coneGroup);
+            }
+        }
+    });
+}
+
+// 5. Kart do Jogador, Acessórios e Faróis
 let originalKartColor = 0xe60000;
 let playerBodyMat = null;
 let facePlaneMesh = null;
@@ -769,6 +950,38 @@ function buildDetailed3DKart(color, isPlayer = false) {
         kartGroup.add(wheel);
     });
 
+    // --- FARÓIS E LANTERNAS TRASEIRAS ---
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+    const headGeo = new THREE.SphereGeometry(0.2, 12, 12);
+
+    const headLeft = new THREE.Mesh(headGeo, lightMat);
+    headLeft.position.set(-0.8, 0.5, 2.2);
+    kartGroup.add(headLeft);
+
+    const headRight = new THREE.Mesh(headGeo, lightMat);
+    headRight.position.set(0.8, 0.5, 2.2);
+    kartGroup.add(headRight);
+
+    const tailMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const tailLeft = new THREE.Mesh(headGeo, tailMat);
+    tailLeft.position.set(-0.9, 0.6, -1.9);
+    const tailRight = new THREE.Mesh(headGeo, tailMat);
+    tailRight.position.set(0.9, 0.6, -1.9);
+    kartGroup.add(tailLeft, tailRight);
+
+    const tailPointLight = new THREE.PointLight(0xff0000, 0.5, 8);
+    tailPointLight.position.set(0, 0.6, -2.0);
+    kartGroup.add(tailPointLight);
+
+    if (isPlayer) {
+        const frontLight = new THREE.PointLight(0xffffcc, 0, 30);
+        frontLight.position.set(0, 1.2, 3.5);
+        kartGroup.add(frontLight);
+
+        kartGroup.frontLight = frontLight;
+        kartGroup.tailLight = tailPointLight;
+    }
+
     const helmetGroup = new THREE.Group();
     helmetGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.85, 24, 24), new THREE.MeshStandardMaterial({ color: 0xffe0bd, roughness: 0.5 })));
 
@@ -798,13 +1011,20 @@ function resetPlayerPosition(trackKey) {
 
     const startPt = trackCurve.getPoint(tValue);
     const startTangent = trackCurve.getTangent(0.0);
-    kartGroup.position.set(startPt.x, 0, startPt.z);
+    
+    kartGroup.position.set(startPt.x, 0.1, startPt.z);
     kartGroup.rotation.y = Math.atan2(startTangent.x, startTangent.z);
     angle = kartGroup.rotation.y;
     speed = 0;
     currentLap = 0;
     passedHalfTrack = false;
+
+    const cameraOffset = new THREE.Vector3(0, 5, -12).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+    camera.position.copy(kartGroup.position).add(cameraOffset);
+    camera.lookAt(kartGroup.position.clone().add(new THREE.Vector3(0, 1.2, 2)));
 }
+
+buildTrack(currentTrackKey);
 resetPlayerPosition(currentTrackKey);
 
 // Seleção de Pistas no Menu
@@ -838,7 +1058,6 @@ function createAIKarts() {
 createAIKarts();
 
 // 7. Personagens
-const textureLoader = new THREE.TextureLoader();
 const characterAssets = {
     mario: { color: 0xe60000 }, luigi: { color: 0x00a000 }, peach: { color: 0xff69b4 },
     daisy: { color: 0xff9900 }, yoshi: { color: 0x32cd32 }, toad: { color: 0x0055ff },
@@ -891,22 +1110,23 @@ document.getElementById('btn-start').addEventListener('click', () => {
     }
     
     gameActive = true;
+    updateHUD();
 });
 
 // 8. MINI-MAPA 2D
 const minimapCanvas = document.getElementById('minimap');
-const minimapCtx = minimapCanvas.getContext('2d');
+const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
 
 function updateMinimap() {
-    if (!gameActive) return;
+    if (!gameActive || !minimapCtx) return;
     minimapCtx.clearRect(0, 0, 160, 160);
 
     minimapCtx.beginPath();
     minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    minimapCtx.lineWidth = 10;
+    minimapCtx.lineWidth = 8;
     trackCenterPoints.forEach((pt, idx) => {
-        const mx = 80 + (pt.x / 180) * 70;
-        const my = 80 + (pt.z / 180) * 70;
+        const mx = 80 + (pt.x / 450) * 70;
+        const my = 80 + (pt.z / 450) * 70;
         if (idx === 0) minimapCtx.moveTo(mx, my);
         else minimapCtx.lineTo(mx, my);
     });
@@ -915,8 +1135,8 @@ function updateMinimap() {
 
     aiKarts.forEach(ai => {
         const pos = ai.group.position;
-        const mx = 80 + (pos.x / 180) * 70;
-        const my = 80 + (pos.z / 180) * 70;
+        const mx = 80 + (pos.x / 450) * 70;
+        const my = 80 + (pos.z / 450) * 70;
         minimapCtx.beginPath();
         minimapCtx.arc(mx, my, 4, 0, Math.PI * 2);
         minimapCtx.fillStyle = '#ff3300';
@@ -924,8 +1144,8 @@ function updateMinimap() {
     });
 
     const pPos = kartGroup.position;
-    const pmx = 80 + (pPos.x / 180) * 70;
-    const pmy = 80 + (pPos.z / 180) * 70;
+    const pmx = 80 + (pPos.x / 450) * 70;
+    const pmy = 80 + (pPos.z / 450) * 70;
     minimapCtx.beginPath();
     minimapCtx.arc(pmx, pmy, 6, 0, Math.PI * 2);
     minimapCtx.fillStyle = '#00ffff';
@@ -945,88 +1165,162 @@ const keys = {
     s: false, 
     a: false, 
     d: false,
-    Space: false
+    Space: false,
+    Shift: false,
+    b: false,
+    btnAccelerate: false,
+    btnBrake: false
 };
 
 window.addEventListener('keydown', (e) => { 
     if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
-        shootShell(); 
+        if (cubesCount > 0) {
+            if (Math.random() > 0.5) shootShell(true);
+            else shootShell(false);
+        }
+    }
+    if (e.key === 'b' || e.key === 'B') {
+        dropBanana();
+    }
+    if (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        activateMushroomBoost();
     }
     if (e.key in keys) keys[e.key] = true; 
 });
 window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
 
-function bindTouchControl(elementId, keyName) {
+let joystickInputX = 0; 
+let joystickInputY = 0; 
+
+const baseElem = document.getElementById('joystick-base');
+const stickElem = document.getElementById('joystick-stick');
+
+if (baseElem && stickElem) {
+    let joystickActive = false;
+    let baseRect = null;
+    const maxRadius = 40;
+
+    const handleStart = (e) => {
+        joystickActive = true;
+        baseRect = baseElem.getBoundingClientRect();
+    };
+
+    const handleMove = (e) => {
+        if (!joystickActive || !baseRect) return;
+        const touch = e.touches ? e.touches[0] : e;
+        
+        const centerX = baseRect.left + baseRect.width / 2;
+        const centerY = baseRect.top + baseRect.height / 2;
+        
+        let deltaX = touch.clientX - centerX;
+        let deltaY = touch.clientY - centerY;
+        
+        const distance = Math.hypot(deltaX, deltaY);
+        if (distance > maxRadius) {
+            deltaX = (deltaX / distance) * maxRadius;
+            deltaY = (deltaY / distance) * maxRadius;
+        }
+
+        stickElem.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+        
+        joystickInputX = deltaX / maxRadius; 
+        joystickInputY = -(deltaY / maxRadius); 
+    };
+
+    const handleEnd = () => {
+        joystickActive = false;
+        stickElem.style.transform = 'translate(-50%, -50%)';
+        joystickInputX = 0;
+        joystickInputY = 0;
+    };
+
+    baseElem.addEventListener('touchstart', handleStart, { passive: true });
+    window.addEventListener('touchmove', handleMove, { passive: true });
+    window.addEventListener('touchend', handleEnd, { passive: true });
+    
+    baseElem.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+}
+
+function bindTouchButton(elementId, keyProp) {
     const btn = document.getElementById(elementId);
     if (!btn) return;
-    
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; }, { passive: false });
-    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; }, { passive: false });
-    btn.addEventListener('mousedown', (e) => { e.preventDefault(); keys[keyName] = true; });
-    btn.addEventListener('mouseup', (e) => { e.preventDefault(); keys[keyName] = false; });
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyProp] = true; }, { passive: false });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyProp] = false; }, { passive: false });
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); keys[keyProp] = true; });
+    btn.addEventListener('mouseup', (e) => { e.preventDefault(); keys[keyProp] = false; });
 }
-
-bindTouchControl('btn-left', 'ArrowLeft');
-bindTouchControl('btn-right', 'ArrowRight');
-bindTouchControl('btn-up', 'ArrowUp');
-bindTouchControl('btn-down', 'ArrowDown');
-bindTouchControl('btn-accelerate', 'ArrowUp');
-bindTouchControl('btn-brake', 'ArrowDown');
-
-const hudBoosterBtn = document.getElementById('hud-booster-btn');
-if (hudBoosterBtn) {
-    hudBoosterBtn.addEventListener('click', () => {
-        if (mushroomsCount >= 10) {
-            mushroomsCount -= 10;
-            boostTimer = 150;
-            sounds.playItemSound(1.8);
-            updateHUD();
-        }
-    });
-}
+bindTouchButton('btn-accelerate', 'btnAccelerate');
+bindTouchButton('btn-brake', 'btnBrake');
 
 function updateHUD() {
     const lapElem = document.getElementById('lap-num');
     if (lapElem) lapElem.innerText = `${currentLap} / 3`;
 
-    document.getElementById('coin-num').innerText = coinsCount;
-    document.getElementById('cube-num').innerText = cubesCount;
-    document.getElementById('mushroom-num').innerText = mushroomsCount;
-    document.getElementById('lives-num').innerText = "❤️".repeat(playerLives);
+    const coinElem = document.getElementById('coin-num');
+    if (coinElem) coinElem.innerText = coinsCount;
 
-    const shellBtnElem = document.getElementById('hud-shell-btn');
-    if (shellBtnElem) {
-        if (cubesCount > 0) {
-            shellBtnElem.style.display = 'block';
+    const cubeElem = document.getElementById('cube-num');
+    if (cubeElem) cubeElem.innerText = cubesCount;
+
+    const shroomElem = document.getElementById('mushroom-num');
+    if (shroomElem) shroomElem.innerText = mushroomsCount;
+
+    const livesElem = document.getElementById('lives-num');
+    if (livesElem) livesElem.innerText = "❤️".repeat(playerLives);
+
+    // Atualiza Botão do Booster Integrado
+    const boosterBtn = document.getElementById('panel-booster-btn');
+    if (boosterBtn) {
+        boosterBtn.innerText = `🚀 TURBO (${mushroomsCount}/3)`;
+        if (mushroomsCount >= 3) {
+            boosterBtn.style.background = 'linear-gradient(135deg, #ff8c00, #ff0055)';
+            boosterBtn.style.color = '#ffffff';
+            boosterBtn.style.borderColor = '#ffffff';
+            boosterBtn.style.cursor = 'pointer';
+            boosterBtn.style.boxShadow = '0 0 10px rgba(255, 140, 0, 0.8)';
         } else {
-            shellBtnElem.style.display = 'none';
+            boosterBtn.style.background = '#444444';
+            boosterBtn.style.color = '#888888';
+            boosterBtn.style.borderColor = '#666666';
+            boosterBtn.style.cursor = 'not-allowed';
+            boosterBtn.style.boxShadow = 'none';
         }
     }
 
-    if (hudBoosterBtn) {
-        if (mushroomsCount >= 10) {
-            hudBoosterBtn.style.display = 'block';
+    // Atualiza Botão de Disparo Integrado
+    const shellBtn = document.getElementById('panel-shell-btn');
+    if (shellBtn) {
+        shellBtn.innerText = `🐢 DISPARAR (${cubesCount})`;
+        if (cubesCount > 0) {
+            shellBtn.style.background = 'linear-gradient(135deg, #00aa00, #00ff66)';
+            shellBtn.style.color = '#ffffff';
+            shellBtn.style.borderColor = '#ffffff';
+            shellBtn.style.cursor = 'pointer';
+            shellBtn.style.boxShadow = '0 0 10px rgba(0, 255, 100, 0.8)';
         } else {
-            hudBoosterBtn.style.display = 'none';
+            shellBtn.style.background = '#444444';
+            shellBtn.style.color = '#888888';
+            shellBtn.style.borderColor = '#666666';
+            shellBtn.style.cursor = 'not-allowed';
+            shellBtn.style.boxShadow = 'none';
         }
     }
 }
 
-// --- CONTROLE DE VOLTAS CORRIGIDO E ROBUSTO ---
 let lastProgressCheck = 0;
 
 function checkLapProgression() {
     const progress = getTrackProgress(kartGroup.position);
 
-    // Registra se passou pela metade da pista (perto de 0.5)
     if (progress > 0.45 && progress < 0.55) {
         passedHalfTrack = true;
     }
 
-    // Se passou pela linha de chegada (próximo de 0 ou 1) tendo passado pela metade antes
     if ((progress < 0.05 || progress > 0.95) && passedHalfTrack) {
-        if (lastProgressCheck > 0.8) { // Garante que veio da reta final de forma contínua
+        if (lastProgressCheck > 0.8) {
             currentLap++;
             passedHalfTrack = false;
             sounds.playLapSound();
@@ -1062,8 +1356,8 @@ function checkCollisions() {
     ramps.forEach(ramp => {
         if (kartPos.distanceTo(ramp.position) < ramp.radius && !isJumping) {
             isJumping = true;
-            verticalSpeed = 0.65; // Super pulo da rampa
-            boostTimer = 90;     // Turbina no ar!
+            verticalSpeed = 0.65;
+            boostTimer = 90;
             sounds.playJumpSound();
         }
     });
@@ -1075,81 +1369,129 @@ function checkCollisions() {
             item.group.visible = false;
             if (item.type === 'coin') coinsCount++;
             else if (item.type === 'cube') cubesCount++;
-            else if (item.type === 'mushroom') { mushroomsCount++; }
+            else if (item.type === 'mushroom') mushroomsCount++;
             updateHUD();
             setTimeout(() => { item.active = true; item.group.visible = true; }, 5000);
         }
     });
+
+    // Colisão com Bananas
+    activeBananas.forEach((banana, bIdx) => {
+        if (kartPos.distanceTo(banana.mesh.position) < banana.radius) {
+            speed = 0.05;
+            angle += Math.PI / 2; 
+            sounds.playHitSound();
+            scene.remove(banana.mesh);
+            activeBananas.splice(bIdx, 1);
+        }
+    });
 }
 
-// --- CHECKPOINTS DE CLIMA E BIOMA ---
-let currentClima = 'sol';
-
 function updateEnvironment(progress) {
-    if (progress >= 0.0 && progress < 0.25 && currentClima !== 'sol') {
-        currentClima = 'sol';
-        scene.background.setHex(0x87ceeb);
-        groundMat.color.setHex(0x2e8b57);
-        dirLight.intensity = 1.0;
-        if (trackMat) {
-            trackMat.color.setHex(0x444444); 
-            trackMat.roughness = 0.8;
-            trackMat.metalness = 0.0;
+    const playerKart = kartGroup;
+    let targetClima = 'sol';
+
+    if (progress >= 0.0 && progress < 0.25) {
+        targetClima = 'sol';
+    } else if (progress >= 0.25 && progress < 0.5) {
+        targetClima = 'calor';
+    } else if (progress >= 0.5 && progress < 0.75) {
+        targetClima = 'chuva';
+    } else {
+        targetClima = 'neve';
+    }
+
+    if (currentClima !== targetClima) {
+        currentClima = targetClima;
+
+        if (currentClima === 'sol') {
+            scene.background.setHex(0x87ceeb);
+            groundMat.color.setHex(0x2e8b57);
+            dirLight.intensity = 1.2;
+            ambientLight.intensity = 0.8;
+            if (trackMat) {
+                trackMat.color.setHex(0x444444); 
+                trackMat.roughness = 0.8;
+                trackMat.metalness = 0.0;
+            }
+            updateSnowMounds(false);
+            updateMeltingProps(false);
+            setupWeatherSystem('sol');
+            currentDriftFactor = 1.0; 
+
+            if (playerKart.frontLight) {
+                playerKart.frontLight.intensity = 0;
+                playerKart.tailLight.intensity = 0.4;
+            }
+
+        } else if (currentClima === 'calor') {
+            scene.background.setHex(0xffaa33); 
+            groundMat.color.setHex(0xd2b48c); 
+            dirLight.intensity = 1.4;
+            ambientLight.intensity = 0.8;
+            if (trackMat) {
+                trackMat.color.setHex(0x554433); 
+                trackMat.roughness = 0.7;
+                trackMat.metalness = 0.1;
+            }
+            updateSnowMounds(false);
+            updateMeltingProps(true); 
+            setupWeatherSystem('calor');
+            currentDriftFactor = 1.0;
+
+            if (playerKart.frontLight) {
+                playerKart.frontLight.intensity = 0;
+                playerKart.tailLight.intensity = 0.4;
+            }
+
+        } else if (currentClima === 'chuva') {
+            scene.background.setHex(0x4a4e69);
+            groundMat.color.setHex(0x3a4d39);
+            dirLight.intensity = 0.5;
+            ambientLight.intensity = 0.4;
+            if (trackMat) {
+                trackMat.color.setHex(0x222222); 
+                trackMat.roughness = 0.35; 
+                trackMat.metalness = 0.1;  
+            }
+            updateSnowMounds(false);
+            updateMeltingProps(false);
+            setupWeatherSystem('chuva');
+            currentDriftFactor = 0.45; 
+
+            if (playerKart.frontLight) {
+                playerKart.frontLight.intensity = 3.0;
+                playerKart.tailLight.intensity = 1.0;
+            }
+
+        } else if (currentClima === 'neve') {
+            scene.background.setHex(0x0c0f1d);
+            groundMat.color.setHex(0xbbbbcc);
+            dirLight.intensity = 0.1;
+            ambientLight.intensity = 0.25;
+            if (trackMat) {
+                trackMat.color.setHex(0xaaaaaa); 
+                trackMat.roughness = 0.9;
+                trackMat.metalness = 0.2;
+            }
+            updateSnowMounds(true); 
+            updateMeltingProps(false);
+            setupWeatherSystem('neve');
+            currentDriftFactor = 0.3; 
+
+            if (playerKart.frontLight) {
+                playerKart.frontLight.intensity = 8.0;
+                playerKart.tailLight.intensity = 2.0;
+            }
         }
-        updateSnowMounds(false);
-        updateMeltingProps(false);
-        setupWeatherSystem('sol');
-        currentDriftFactor = 1.0; 
-    } else if (progress >= 0.25 && progress < 0.5 && currentClima !== 'calor') {
-        currentClima = 'calor';
-        scene.background.setHex(0xffaa33); 
-        groundMat.color.setHex(0xd2b48c); 
-        dirLight.intensity = 1.4;
-        if (trackMat) {
-            trackMat.color.setHex(0x554433); 
-            trackMat.roughness = 0.7;
-            trackMat.metalness = 0.1;
-        }
-        updateSnowMounds(false);
-        updateMeltingProps(true); 
-        setupWeatherSystem('calor');
-        currentDriftFactor = 1.0;
-    } else if (progress >= 0.5 && progress < 0.75 && currentClima !== 'chuva') {
-        currentClima = 'chuva';
-        scene.background.setHex(0x4a4e69);
-        groundMat.color.setHex(0x3a4d39);
-        dirLight.intensity = 0.6;
-        if (trackMat) {
-            trackMat.color.setHex(0x222222); 
-            trackMat.roughness = 0.15; 
-            trackMat.metalness = 0.5;  
-        }
-        updateSnowMounds(false);
-        updateMeltingProps(false);
-        setupWeatherSystem('chuva');
-        currentDriftFactor = 0.45; 
-    } else if (progress >= 0.75 && progress <= 1.0 && currentClima !== 'neve') {
-        currentClima = 'neve';
-        scene.background.setHex(0x1a1a2e);
-        groundMat.color.setHex(0xe0e0e0);
-        dirLight.intensity = 0.4;
-        if (trackMat) {
-            trackMat.color.setHex(0xcccccc); 
-            trackMat.roughness = 0.9;
-            trackMat.metalness = 0.2;
-        }
-        updateSnowMounds(true); 
-        updateMeltingProps(false);
-        setupWeatherSystem('neve');
-        currentDriftFactor = 0.3; 
     }
 }
 
 function getTrackProgress(position) {
     let closestT = 0;
     let minDistance = 99999;
-    for (let i = 0; i <= 100; i++) {
-        const t = i / 100;
+    for (let i = 0; i <= 300; i++) {
+        const t = i / 300;
         const pt = trackCurve.getPoint(t);
         const dist = position.distanceTo(pt);
         if (dist < minDistance) {
@@ -1165,8 +1507,8 @@ function checkBoundaryCollisions() {
     let closestPoint = trackCurve.getPoint(0);
     let minDistance = 9999;
     
-    for (let i = 0; i <= 100; i++) {
-        const pt = trackCurve.getPoint(i / 100);
+    for (let i = 0; i <= 600; i++) {
+        const pt = trackCurve.getPoint(i / 600);
         const dist = kartPos.distanceTo(pt);
         if (dist < minDistance) {
             minDistance = dist;
@@ -1190,17 +1532,28 @@ function updateKart() {
     let maxSpeed = 0.45;
     if (boostTimer > 0) { boostTimer--; maxSpeed = 0.85; speed = maxSpeed; }
 
-    if (keys.ArrowUp || keys.w) speed = Math.min(speed + 0.008, maxSpeed);
-    else if (keys.ArrowDown || keys.s) speed = Math.max(speed - 0.012, -0.18);
+    const isAccelerating = keys.ArrowUp || keys.w || keys.btnAccelerate || joystickInputY > 0.2;
+    const isBraking = keys.ArrowDown || keys.s || keys.btnBrake || joystickInputY < -0.2;
+
+    if (isAccelerating) speed = Math.min(speed + 0.008, maxSpeed);
+    else if (isBraking) speed = Math.max(speed - 0.012, -0.18);
     else speed *= 0.95;
 
     const turnFactor = 0.035 * (Math.abs(speed) / 0.45 + 0.3);
     let targetSteering = 0;
-    if (keys.ArrowLeft || keys.a) targetSteering = turnFactor * (speed >= 0 ? 1 : -1);
-    if (keys.ArrowRight || keys.d) targetSteering = -turnFactor * (speed >= 0 ? 1 : -1);
+
+    if (Math.abs(joystickInputX) > 0.05) {
+        targetSteering = -joystickInputX * turnFactor * (speed >= 0 ? 1 : -1);
+    } else if (keys.ArrowLeft || keys.a) {
+        targetSteering = turnFactor * (speed >= 0 ? 1 : -1);
+    } else if (keys.ArrowRight || keys.d) {
+        targetSteering = -turnFactor * (speed >= 0 ? 1 : -1);
+    }
 
     currentSteeringAngle += (targetSteering - currentSteeringAngle) * (0.15 * currentDriftFactor);
-    angle += currentSteeringAngle;
+    
+    const driftSlide = (currentClima === 'neve' || currentClima === 'chuva') ? 1.4 : 1.0;
+    angle += currentSteeringAngle * driftSlide;
 
     if (isJumping) {
         kartGroup.position.y += verticalSpeed;
@@ -1220,8 +1573,9 @@ function updateKart() {
     sounds.updateEngine(speed / 0.45);
     updateSpeedometer();
 
-    const cameraOffset = new THREE.Vector3(0, 6, -11).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-    camera.position.copy(kartGroup.position).add(cameraOffset);
+    const cameraOffset = new THREE.Vector3(0, 5, -12).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+    const targetCameraPos = kartGroup.position.clone().add(cameraOffset);
+    camera.position.copy(targetCameraPos);
     camera.lookAt(kartGroup.position.clone().add(new THREE.Vector3(0, 1.2, 2)));
 }
 
@@ -1241,12 +1595,20 @@ animate();
 
 function animate() {
     requestAnimationFrame(animate);
-    itemBoxes.forEach(item => { if (item.active && item.group) item.group.rotation.y += 0.04; });
-    updateAIKarts();
-    updateShells(); 
-    updateKart();
-    updateWeatherParticles(); 
-    updateMinimap();
+    
+    if (gameActive) {
+        itemBoxes.forEach(item => { if (item.active && item.group) item.group.rotation.y += 0.04; });
+        updateAIKarts();
+        updateShells(); 
+        updateKart();
+        updateWeatherParticles(); 
+        updateMinimap();
+    } else {
+        const cameraOffset = new THREE.Vector3(0, 5, -12).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+        camera.position.copy(kartGroup.position).add(cameraOffset);
+        camera.lookAt(kartGroup.position.clone().add(new THREE.Vector3(0, 1.2, 2)));
+    }
+    
     renderer.render(scene, camera);
 }
 
