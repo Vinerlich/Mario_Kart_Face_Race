@@ -3,7 +3,6 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- Meta tag ajustada para travar zoom em telas mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mario Kart Face Race Game 3D</title>
 
@@ -107,13 +106,56 @@
         </div>
 
         <button id="btn-start" class="btn-action">🎮 JOGAR AGORA!</button>
+        <button id="btn-instructions" class="track-btn">📖 COMO JOGAR</button>
     </div>
 
-    <!-- TELA DE VITÓRIA -->
-    <div id="victory-screen">
-        <h2>VOCÊ VENCEU! 🏆</h2>
-        <p class="victory-msg">🎉 Parabéns! Você completou todas as voltas em 1º lugar!</p>
-        <button id="btn-restart" class="btn-action">🔄 JOGAR NOVAMENTE</button>
+    <!-- MODAL DE INSTRUÇÕES (MANUAL) - TOTALMENTE RESTAURADO -->
+    <div id="instructions-modal">
+        <div class="modal-content">
+            <button id="btn-close-instructions" class="close-x-btn">✕</button>
+
+            <h2>📖 MANUAL DE INSTRUÇÕES</h2>
+            
+            <div class="manual-body">
+                <p><strong>🏎️ Objetivo:</strong> Complete as 3 voltas da pista em 1º lugar, desviando dos obstáculos e usando itens estratégicos!</p>
+                <p><strong>🕹️ Controles (Teclado - W, A, S, D ou Setas):</strong></p>
+                <ul>
+                    <li><strong>W / Seta Acima:</strong> Acelerar o Kart.</li>
+                    <li><strong>S / Seta Abaixo:</strong> Frear / Marcha Ré.</li>
+                    <li><strong>A / D ou Setas Esquerda/Direita:</strong> Virar o volante de forma fluida.</li>
+                    <li><strong>Espaço:</strong> Disparar Cascos (Verde/Vermelho).</li>
+                    <li><strong>Tecla B:</strong> Soltar Armadilha de Banana.</li>
+                    <li><strong>Shift Esquerdo:</strong> Usar Turbo (quando juntar 3 Cogumelos).</li>
+                </ul>
+                <p><strong>📱 Controles (Mobile / Touch):</strong></p>
+                <ul>
+                    <li>Use o <strong>Joystick Analógico</strong> à esquerda para guiar.</li>
+                    <li>Botões na tela para <strong>Frear</strong>, <strong>Turbo</strong>, <strong>Disparar</strong> e <strong>Banana</strong>.</li>
+                </ul>
+                <p><strong>🌟 Itens na Pista:</strong></p>
+                <ul>
+                    <li>🪙 <strong>Moedas:</strong> Aumentam sua pontuação.</li>
+                    <li>❓ <strong>Cubos Mistérios:</strong> Dão projéteis para atacar os rivais.</li>
+                    <li>🍄 <strong>Cogumelos:</strong> Colete 3 para ativar o Turbo supremo!</li>
+                    <li>🚀 <strong>Rampas:</strong> Fazem o kart saltar e ganham velocidade.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE FIM DE JOGO (GAME OVER / VITÓRIA) -->
+    <div id="game-over-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">Fim de Jogo</h2>
+            <div id="modal-body">
+                <p id="modal-message"></p>
+                <div class="modal-stats">
+                    <span id="stat-position">Posição: -</span>
+                    <span id="stat-time">Tempo: -</span>
+                </div>
+            </div>
+            <button id="restart-btn" class="arcade-btn">Jogar Novamente 🏎️</button>
+        </div>
     </div>
 
     <script type="module" src="./js/script.js"></script>

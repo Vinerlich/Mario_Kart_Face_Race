@@ -208,6 +208,98 @@ function clearTrackItems() {
     activeBananas.length = 0;
 }
 
+// --- CONTROLE DO MODAL DE GAME OVER / VITÓRIA ---
+function showGameOverModal(isVictory, position, totalTime) {
+    const modal = document.getElementById('game-over-modal');
+    const title = document.getElementById('modal-title');
+    const message = document.getElementById('modal-message');
+    const statPosition = document.getElementById('stat-position');
+    const statTime = document.getElementById('stat-time');
+
+    if (isVictory) {
+        title.innerText = "VITÓRIA! 🏆";
+        title.style.color = "#00ffcc";
+        message.innerText = "Você dominou a pista com maestria!";
+    } else {
+        title.innerText = "GAME OVER 💥";
+        title.style.color = "#ff3333";
+        message.innerText = "Não foi dessa vez! Tente novamente.";
+    }
+
+    statPosition.innerText = `Posição: ${position}º`;
+    statTime.innerText = `Tempo: ${totalTime}`;
+    modal.style.display = 'flex';
+}
+
+function resetGame() {
+    document.getElementById('game-over-modal').style.display = 'none';
+    currentLap = 0;
+    coinsCount = 0;
+    cubesCount = 0;
+    mushroomsCount = 0;
+    playerLives = 3;
+    speed = 0;
+    gameActive = true;
+    updateHUD();
+    resetPlayerPosition(currentTrackKey);
+    spawnDynamicTrackItems();
+}
+
+document.getElementById('restart-btn').addEventListener('click', resetGame);
+
+// --- SISTEMA DE PARTÍCULAS (FUMAÇA E FAÍSCAS) ---
+let smokeParticles, sparkParticles;
+const maxParticles = 200;
+
+function setupParticleSystems() {
+    const smokeGeo = new THREE.BufferGeometry();
+    const smokePositions = new Float32Array(maxParticles * 3);
+    for (let i = 0; i < maxParticles * 3; i++) smokePositions[i] = -9999;
+    smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePositions, 3));
+    
+    const smokeMat = new THREE.PointsMaterial({
+        color: 0xdddddd, size: 0.8, transparent: true, opacity: 0.5, blending: THREE.NormalBlending, depthWrite: false
+    });
+    smokeParticles = new THREE.Points(smokeGeo, smokeMat);
+    scene.add(smokeParticles);
+
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkPositions = new Float32Array(maxParticles * 3);
+    for (let i = 0; i < maxParticles * 3; i++) sparkPositions[i] = -9999;
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+    
+    const sparkMat = new THREE.PointsMaterial({
+        color: 0xffaa00, size: 0.6, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    sparkParticles = new THREE.Points(sparkGeo, sparkMat);
+    scene.add(sparkParticles);
+}
+
+setupParticleSystems();
+
+let smokeIndex = 0;
+let sparkIndex = 0;
+
+function emitSmoke(position) {
+    if (!smokeParticles) return;
+    const positions = smokeParticles.geometry.attributes.position.array;
+    positions[smokeIndex * 3] = position.x + (Math.random() - 0.5) * 0.5;
+    positions[smokeIndex * 3 + 1] = position.y + 0.2;
+    positions[smokeIndex * 3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
+    smokeParticles.geometry.attributes.position.needsUpdate = true;
+    smokeIndex = (smokeIndex + 1) % maxParticles;
+}
+
+function emitSparks(position) {
+    if (!sparkParticles) return;
+    const positions = sparkParticles.geometry.attributes.position.array;
+    positions[sparkIndex * 3] = position.x + (Math.random() - 0.5) * 1.2;
+    positions[sparkIndex * 3 + 1] = position.y + 0.3;
+    positions[sparkIndex * 3 + 2] = position.z + (Math.random() - 0.5) * 1.2;
+    sparkParticles.geometry.attributes.position.needsUpdate = true;
+    sparkIndex = (sparkIndex + 1) % maxParticles;
+}
+
 // --- SISTEMA DE ITENS ---
 function dropBanana() {
     sounds.playItemSound(0.8);
@@ -295,7 +387,7 @@ function activateMushroomBoost() {
     }
 }
 
-// --- MONTAGEM DO HUD UNIFICADO (SEM FOGUETE REDUNDANTE) ---
+// --- MONTAGEM DO HUD UNIFICADO ---
 function createIntegratedHUD() {
     const hudContainer = document.getElementById('hud-game');
     if (!hudContainer) return;
@@ -357,9 +449,18 @@ function createIntegratedHUD() {
 
 createIntegratedHUD();
 
-// Remove o botão de foguete antigo do HTML móvel se ainda estiver presente
 const oldRocketBtn = document.getElementById('hud-booster-btn');
 if (oldRocketBtn) oldRocketBtn.remove();
+
+// --- CONTROLE DO MANUAL DE INSTRUÇÕES ---
+const instructionsModal = document.getElementById('instructions-modal');
+const btnInstructions = document.getElementById('btn-instructions');
+const btnCloseInstructions = document.getElementById('btn-close-instructions');
+
+if (btnInstructions && instructionsModal && btnCloseInstructions) {
+    btnInstructions.addEventListener('click', () => { instructionsModal.style.display = 'flex'; });
+    btnCloseInstructions.addEventListener('click', () => { instructionsModal.style.display = 'none'; });
+}
 
 // --- CENÁRIO DE COLINAS 3D DINÂMICO ---
 const horizonProps = [];
@@ -911,19 +1012,112 @@ let playerAccessoriesGroup = null;
 
 function createAccessoriesGroup(charKey, capColorHex) {
     const group = new THREE.Group();
-    if (charKey === 'peach' || charKey === 'daisy') {
-        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 6), new THREE.MeshStandardMaterial({ color: charKey === 'peach' ? 0xffd700 : 0xff8c00, metalness: 0.8 }));
-        crown.position.set(0, 0.95, 0); group.add(crown);
-    } else {
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.88, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: capColorHex, roughness: 0.4 }));
-        cap.position.set(0, 0.1, 0); group.add(cap);
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.5), new THREE.MeshStandardMaterial({ color: capColorHex, roughness: 0.4 }));
-        visor.position.set(0, 0.25, 0.8); visor.rotation.x = 0.2; group.add(visor);
+
+    if (charKey === 'toad') {
+        const toadCap = new THREE.Mesh(
+            new THREE.SphereGeometry(1.0, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.5), 
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+        );
+        toadCap.position.set(0, 0.2, 0);
+        group.add(toadCap);
+
+        const spotMat = new THREE.MeshStandardMaterial({ color: 0xee0000, roughness: 0.3 });
+        const spotGeo = new THREE.SphereGeometry(0.32, 12, 12);
+        
+        const spotFront = new THREE.Mesh(spotGeo, spotMat);
+        spotFront.position.set(0, 0.85, 0.6);
+        
+        const spotLeft = new THREE.Mesh(spotGeo, spotMat);
+        spotLeft.position.set(-0.7, 0.6, 0);
+        
+        const spotRight = new THREE.Mesh(spotGeo, spotMat);
+        spotRight.position.set(0.7, 0.6, 0);
+
+        group.add(spotFront, spotLeft, spotRight);
+    } 
+    else if (charKey === 'peach' || charKey === 'daisy') {
+        const crownMat = new THREE.MeshStandardMaterial({ 
+            color: charKey === 'peach' ? 0xffd700 : 0xffaa00, 
+            metalness: 0.9, 
+            roughness: 0.1 
+        });
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.35, 6), crownMat);
+        crown.position.set(0, 0.95, 0); 
+        group.add(crown);
+    } 
+    else if (charKey === 'yoshi') {
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        
+        const eyeGeo = new THREE.SphereGeometry(0.3, 12, 12);
+        const pupilGeo = new THREE.SphereGeometry(0.12, 8, 8);
+
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(-0.35, 0.5, 0.7);
+        const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+        leftPupil.position.set(-0.35, 0.5, 0.92);
+
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        rightEye.position.set(0.35, 0.5, 0.7);
+        const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+        rightPupil.position.set(0.35, 0.5, 0.92);
+
+        const spineMat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+        const spine = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), spineMat);
+        spine.position.set(0, 0.6, -0.8);
+        spine.rotation.x = -0.5;
+
+        group.add(leftEye, leftPupil, rightEye, rightPupil, spine);
+    } 
+    else if (charKey === 'bowser') {
+        const hornMat = new THREE.MeshStandardMaterial({ color: 0xfffff0, roughness: 0.4 });
+        const hornGeo = new THREE.ConeGeometry(0.25, 0.7, 8);
+        
+        const leftHorn = new THREE.Mesh(hornGeo, hornMat);
+        leftHorn.position.set(-0.8, 0.6, 0.1);
+        leftHorn.rotation.z = -0.5;
+
+        const rightHorn = new THREE.Mesh(hornGeo, hornMat);
+        rightHorn.position.set(0.8, 0.6, 0.1);
+        rightHorn.rotation.z = 0.5;
+
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0xff2200 });
+        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 1.0), hairMat);
+        hair.position.set(0, 0.7, -0.3);
+
+        group.add(leftHorn, rightHorn, hair);
+    } 
+    else {
+        const cap = new THREE.Mesh(
+            new THREE.SphereGeometry(0.88, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), 
+            new THREE.MeshStandardMaterial({ color: capColorHex, roughness: 0.4 })
+        );
+        cap.position.set(0, 0.1, 0); 
+        group.add(cap);
+
+        const visor = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.06, 0.5), 
+            new THREE.MeshStandardMaterial({ color: capColorHex, roughness: 0.4 })
+        );
+        visor.position.set(0, 0.25, 0.8); 
+        visor.rotation.x = 0.2; 
+        group.add(visor);
     }
-    if (['mario', 'luigi', 'wario', 'bowser'].includes(charKey)) {
-        const stache = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.15), new THREE.MeshStandardMaterial({ color: charKey === 'wario' ? 0x111111 : 0x221100 }));
-        stache.position.set(0, -0.22, 0.88); group.add(stache);
+
+    if (['mario', 'luigi', 'wario'].includes(charKey)) {
+        const stacheGeo = charKey === 'wario' ? 
+            new THREE.BoxGeometry(0.8, 0.2, 0.18) : 
+            new THREE.BoxGeometry(0.6, 0.12, 0.15);
+            
+        const stacheMat = new THREE.MeshStandardMaterial({ 
+            color: charKey === 'wario' ? 0x111111 : 0x221100 
+        });
+        
+        const stache = new THREE.Mesh(stacheGeo, stacheMat);
+        stache.position.set(0, -0.22, 0.88); 
+        group.add(stache);
     }
+
     return group;
 }
 
@@ -950,7 +1144,6 @@ function buildDetailed3DKart(color, isPlayer = false) {
         kartGroup.add(wheel);
     });
 
-    // --- FARÓIS E LANTERNAS TRASEIRAS ---
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
     const headGeo = new THREE.SphereGeometry(0.2, 12, 12);
 
@@ -1004,6 +1197,7 @@ let coinsCount = 0, cubesCount = 0, mushroomsCount = 0, playerLives = 3;
 let currentLap = 0;
 let passedHalfTrack = false;
 let currentDriftFactor = 1.0; 
+let gameActive = false;
 
 function resetPlayerPosition(trackKey) {
     let tValue = 0.98; 
@@ -1030,7 +1224,10 @@ resetPlayerPosition(currentTrackKey);
 // Seleção de Pistas no Menu
 document.querySelectorAll('.track-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+        if (e.currentTarget.id === 'btn-instructions') return;
+        document.querySelectorAll('.track-btn').forEach(b => {
+            if (b.id !== 'btn-instructions') b.classList.remove('active');
+        });
         e.currentTarget.classList.add('active');
         const trackVal = e.currentTarget.getAttribute('data-track');
         if (trackVal in trackLayouts) {
@@ -1097,7 +1294,6 @@ document.querySelectorAll('.char-btn').forEach(btn => {
     });
 });
 
-let gameActive = false;
 document.getElementById('btn-start').addEventListener('click', () => {
     sounds.init();
     document.getElementById('menu-screen').style.display = 'none';
@@ -1173,6 +1369,7 @@ const keys = {
 };
 
 window.addEventListener('keydown', (e) => { 
+    const keyLower = e.key.toLowerCase();
     if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         if (cubesCount > 0) {
@@ -1180,15 +1377,27 @@ window.addEventListener('keydown', (e) => {
             else shootShell(false);
         }
     }
-    if (e.key === 'b' || e.key === 'B') {
+    if (keyLower === 'b') {
         dropBanana();
     }
     if (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         activateMushroomBoost();
     }
-    if (e.key in keys) keys[e.key] = true; 
+    if (e.key in keys) keys[e.key] = true;
+    if (keyLower === 'w') keys.w = true;
+    if (keyLower === 's') keys.s = true;
+    if (keyLower === 'a') keys.a = true;
+    if (keyLower === 'd') keys.d = true;
 });
-window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
+
+window.addEventListener('keyup', (e) => { 
+    const keyLower = e.key.toLowerCase();
+    if (e.key in keys) keys[e.key] = false;
+    if (keyLower === 'w') keys.w = false;
+    if (keyLower === 's') keys.s = false;
+    if (keyLower === 'a') keys.a = false;
+    if (keyLower === 'd') keys.d = false;
+});
 
 let joystickInputX = 0; 
 let joystickInputY = 0; 
@@ -1271,7 +1480,6 @@ function updateHUD() {
     const livesElem = document.getElementById('lives-num');
     if (livesElem) livesElem.innerText = "❤️".repeat(playerLives);
 
-    // Atualiza Botão do Booster Integrado
     const boosterBtn = document.getElementById('panel-booster-btn');
     if (boosterBtn) {
         boosterBtn.innerText = `🚀 TURBO (${mushroomsCount}/3)`;
@@ -1290,7 +1498,6 @@ function updateHUD() {
         }
     }
 
-    // Atualiza Botão de Disparo Integrado
     const shellBtn = document.getElementById('panel-shell-btn');
     if (shellBtn) {
         shellBtn.innerText = `🐢 DISPARAR (${cubesCount})`;
@@ -1328,10 +1535,7 @@ function checkLapProgression() {
 
             if (currentLap >= 3) {
                 gameActive = false;
-                setTimeout(() => {
-                    alert("Parabéns! Você completou todas as voltas!");
-                    location.reload();
-                }, 500);
+                showGameOverModal(true, 1, "02:15.00");
             }
         }
     }
@@ -1375,7 +1579,6 @@ function checkCollisions() {
         }
     });
 
-    // Colisão com Bananas
     activeBananas.forEach((banana, bIdx) => {
         if (kartPos.distanceTo(banana.mesh.position) < banana.radius) {
             speed = 0.05;
@@ -1385,6 +1588,33 @@ function checkCollisions() {
             activeBananas.splice(bIdx, 1);
         }
     });
+}
+
+function checkEnvironmentCollisions() {
+    const kartPos = kartGroup.position;
+    let closestPoint = trackCurve.getPoint(0);
+    let minDistance = 9999;
+    
+    for (let i = 0; i <= 600; i++) {
+        const t = i / 600;
+        const pt = trackCurve.getPoint(t);
+        const dist = kartPos.distanceTo(pt);
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestPoint = pt;
+        }
+    }
+
+    const maxAllowedDistance = trackWidth / 2 - 1.2;
+
+    if (minDistance > maxAllowedDistance) {
+        speed = -0.1; 
+        sounds.playHitSound();
+        
+        const pushDir = closestPoint.clone().sub(kartPos).normalize();
+        kartGroup.position.copy(closestPoint).add(pushDir.multiplyScalar(-maxAllowedDistance));
+        return;
+    }
 }
 
 function updateEnvironment(progress) {
@@ -1502,28 +1732,6 @@ function getTrackProgress(position) {
     return closestT;
 }
 
-function checkBoundaryCollisions() {
-    const kartPos = kartGroup.position;
-    let closestPoint = trackCurve.getPoint(0);
-    let minDistance = 9999;
-    
-    for (let i = 0; i <= 600; i++) {
-        const pt = trackCurve.getPoint(i / 600);
-        const dist = kartPos.distanceTo(pt);
-        if (dist < minDistance) {
-            minDistance = dist;
-            closestPoint = pt;
-        }
-    }
-
-    if (minDistance > (trackWidth / 2 - 1.0)) {
-        speed = -0.1;
-        sounds.playHitSound();
-        const pushDir = closestPoint.clone().sub(kartPos).normalize();
-        kartGroup.position.add(pushDir.multiplyScalar(0.4));
-    }
-}
-
 let currentSteeringAngle = 0;
 
 function updateKart() {
@@ -1539,7 +1747,7 @@ function updateKart() {
     else if (isBraking) speed = Math.max(speed - 0.012, -0.18);
     else speed *= 0.95;
 
-    const turnFactor = 0.035 * (Math.abs(speed) / 0.45 + 0.3);
+    const turnFactor = 0.042 * (Math.abs(speed) / 0.45 + 0.25);
     let targetSteering = 0;
 
     if (Math.abs(joystickInputX) > 0.05) {
@@ -1550,7 +1758,7 @@ function updateKart() {
         targetSteering = -turnFactor * (speed >= 0 ? 1 : -1);
     }
 
-    currentSteeringAngle += (targetSteering - currentSteeringAngle) * (0.15 * currentDriftFactor);
+    currentSteeringAngle += (targetSteering - currentSteeringAngle) * (0.2 * currentDriftFactor);
     
     const driftSlide = (currentClima === 'neve' || currentClima === 'chuva') ? 1.4 : 1.0;
     angle += currentSteeringAngle * driftSlide;
@@ -1564,11 +1772,24 @@ function updateKart() {
     kartGroup.rotation.y = angle;
     kartGroup.translateZ(speed);
 
+    // Emissão das Partículas (Fumaça e Faíscas)
+    if (boostTimer > 0) {
+        const backPos = kartGroup.position.clone().add(new THREE.Vector3(0, 0, -1.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle));
+        emitSparks(backPos);
+        emitSparks(backPos);
+    }
+
+    if (Math.abs(currentSteeringAngle) > 0.025 || currentClima === 'neve' || currentClima === 'chuva') {
+        if (Math.abs(speed) > 0.1) {
+            emitSmoke(kartGroup.position);
+        }
+    }
+
     const progress = getTrackProgress(kartGroup.position);
     updateEnvironment(progress);
 
     checkCollisions();
-    checkBoundaryCollisions();
+    checkEnvironmentCollisions();
     checkLapProgression();
     sounds.updateEngine(speed / 0.45);
     updateSpeedometer();

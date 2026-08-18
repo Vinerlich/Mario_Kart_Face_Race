@@ -127,6 +127,93 @@ body, html {
     box-shadow: 0 0 15px #ffea00;
 }
 
+/* Botão específico do Manual no Menu */
+#btn-instructions {
+    margin-top: 12px;
+    font-size: 1rem;
+    padding: 10px 24px;
+    background: rgba(40, 20, 80, 0.85);
+    border-color: #00ffff;
+}
+
+#btn-instructions:hover {
+    background: #00ffff;
+    color: #000;
+    box-shadow: 0 0 15px #00ffff;
+}
+
+/* --- MANUAL DE INSTRUÇÕES (MODAL) --- */
+#instructions-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 5, 30, 0.95);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+#instructions-modal .modal-content {
+    position: relative; 
+    background: linear-gradient(180deg, #1e1450 0%, #0a0523 100%);
+    border: 4px solid #ffea00;
+    border-radius: 20px;
+    padding: 30px 25px 25px 25px;
+    max-width: 550px;
+    width: 100%;
+    color: white;
+    font-family: 'Outfit', sans-serif;
+    text-align: left;
+    box-shadow: 0 0 30px rgba(255, 234, 0, 0.5);
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+#instructions-modal .modal-content h2 {
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    color: #ffea00;
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+}
+
+.manual-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.manual-body ul {
+    margin-left: 20px;
+}
+
+/* Apenas o X limpo e minimalista no canto superior direito */
+.close-x-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: transparent;
+    color: #ffea00;
+    border: none;
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    font-size: 1.6rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-x-btn:hover {
+    color: #ff3300;
+    transform: scale(1.2) rotate(90deg);
+}
+
 /* Seleção de Personagens */
 .char-selection {
     display: flex;
@@ -355,37 +442,69 @@ body, html {
     color: #fff;
 }
 
-/* --- TELA DE VITÓRIA --- */
-#victory-screen {
-    display: none;
-    position: absolute;
+/* --- NOVO MODAL DE FIM DE JOGO (GAME OVER / VITÓRIA) --- */
+.modal-overlay {
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(10, 5, 25, 0.92);
-    color: white;
-    z-index: 100;
-    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+}
+
+#game-over-modal .modal-content {
+    background: #1a1a2e;
+    border: 5px solid #ffcc00;
+    border-radius: 20px;
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;
     text-align: center;
-    padding: 20px;
+    color: #ffffff;
+    box-shadow: 0 0 30px rgba(255, 204, 0, 0.3);
 }
 
-#victory-screen h2 {
+#game-over-modal .modal-content h2 {
     font-family: 'Luckiest Guy', cursive, sans-serif;
-    font-size: clamp(2.5rem, 7vw, 4.5rem);
-    color: #ffea00;
-    margin-bottom: 15px;
-    text-shadow: 4px 4px 0px #cc0000, 0 0 30px #ffea00;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    text-shadow: 2px 2px #000;
 }
 
-.victory-msg {
-    font-weight: 700;
-    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
-    margin-bottom: 30px;
-    color: #00ffcc;
+.modal-stats {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.arcade-btn {
+    background: #e63946;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-family: 'Luckiest Guy', cursive, sans-serif;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    width: 100%;
+}
+
+.arcade-btn:hover {
+    background: #ff4d60;
+    transform: scale(1.05);
 }
 
 /* --- RESPONSIVIDADE PARA DISPOSITIVOS MÓVEIS --- */
