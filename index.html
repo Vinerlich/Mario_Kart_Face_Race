@@ -32,8 +32,12 @@
     <div id="hud-game">
         <div class="hud-item">🚩 VOLTA: <span id="lap-num">0 / 3</span></div>
         <div class="hud-item">
-            <span>🍄 COGUMELOS: <span id="mushroom-num">0</span></span>
-            <button id="hud-booster-btn">🚀 USAR BOOST</button>
+            <span>🍄 TURBO: <span id="mushroom-num">0</span></span>
+            <button id="panel-booster-btn">🚀 USAR (0/3)</button>
+        </div>
+        <div class="hud-item">
+            <span>⭐ ESTRELA: <span id="star-num">0</span></span>
+            <button id="panel-star-btn">⭐ ATIVAR</button>
         </div>
         <div class="hud-item">🪙 MOEDAS: <span id="coin-num">0</span></div>
         <div class="hud-item">❓ CUBOS: <span id="cube-num">0</span></div>
@@ -109,15 +113,16 @@
         <button id="btn-instructions" class="track-btn">📖 COMO JOGAR</button>
     </div>
 
-    <!-- MODAL DE INSTRUÇÕES (MANUAL) - TOTALMENTE RESTAURADO -->
+    <!-- MODAL DE INSTRUÇÕES (MANUAL) - ATUALIZADO COM A ESTRELA ⭐ -->
     <div id="instructions-modal">
         <div class="modal-content">
             <button id="btn-close-instructions" class="close-x-btn">✕</button>
 
             <h2>📖 MANUAL DE INSTRUÇÕES</h2>
-            
+
             <div class="manual-body">
-                <p><strong>🏎️ Objetivo:</strong> Complete as 3 voltas da pista em 1º lugar, desviando dos obstáculos e usando itens estratégicos!</p>
+                <p><strong>🏎️ Objetivo:</strong> Complete as 3 voltas da pista em 1º lugar, desviando dos obstáculos e
+                    usando itens estratégicos!</p>
                 <p><strong>🕹️ Controles (Teclado - W, A, S, D ou Setas):</strong></p>
                 <ul>
                     <li><strong>W / Seta Acima:</strong> Acelerar o Kart.</li>
@@ -126,17 +131,20 @@
                     <li><strong>Espaço:</strong> Disparar Cascos (Verde/Vermelho).</li>
                     <li><strong>Tecla B:</strong> Soltar Armadilha de Banana.</li>
                     <li><strong>Shift Esquerdo:</strong> Usar Turbo (quando juntar 3 Cogumelos).</li>
+                    <li><strong>Tecla E:</strong> Ativar a Estrela de Invencibilidade ⭐.</li>
                 </ul>
                 <p><strong>📱 Controles (Mobile / Touch):</strong></p>
                 <ul>
                     <li>Use o <strong>Joystick Analógico</strong> à esquerda para guiar.</li>
-                    <li>Botões na tela para <strong>Frear</strong>, <strong>Turbo</strong>, <strong>Disparar</strong> e <strong>Banana</strong>.</li>
+                    <li>Botões na tela para <strong>Frear</strong>, <strong>Turbo</strong>, <strong>Ativar
+                            Estrela</strong> e <strong>Banana</strong>.</li>
                 </ul>
                 <p><strong>🌟 Itens na Pista:</strong></p>
                 <ul>
                     <li>🪙 <strong>Moedas:</strong> Aumentam sua pontuação.</li>
                     <li>❓ <strong>Cubos Mistérios:</strong> Dão projéteis para atacar os rivais.</li>
                     <li>🍄 <strong>Cogumelos:</strong> Colete 3 para ativar o Turbo supremo!</li>
+                    <li>⭐ <strong>Estrela:</strong> Dá super velocidade e imunidade contra armadilhas!</li>
                     <li>🚀 <strong>Rampas:</strong> Fazem o kart saltar e ganham velocidade.</li>
                 </ul>
             </div>
@@ -154,7 +162,12 @@
                     <span id="stat-time">Tempo: -</span>
                 </div>
             </div>
-            <button id="restart-btn" class="arcade-btn">Jogar Novamente 🏎️</button>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                <button id="restart-btn" class="arcade-btn">Jogar Novamente 🏎️</button>
+                <button id="next-track-btn" class="arcade-btn"
+                    style="background: linear-gradient(135deg, #00ffcc, #00aa66); display: none;">Próxima Pista
+                    ➔</button>
+            </div>
         </div>
     </div>
 
