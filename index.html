@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mario Kart Face Race Game 3D</title>
+    <!-- Título atualizado para garantir total blindagem de direitos autorais e originalidade comercial -->
+    <title>Toon Kart: Turbo Circuit</title>
 
     <!-- Fonte Gamer Alegre -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,7 +78,7 @@
     <div id="menu-screen">
         <h1 class="game-title">
             <span class="icon-bounce">🏎️</span>
-            MARIO KART <span class="highlight-title">FACE RACE 3D</span>
+            TOON KART <span class="highlight-title">TURBO CIRCUIT</span>
             <span class="icon-bounce alt">🏁</span>
         </h1>
 
@@ -89,31 +90,25 @@
             <button class="track-btn" data-track="hard">🍄 Cogumelo (Lendário)</button>
         </div>
 
+        <!-- SELEÇÃO DE PILOTOS COM IDENTIDADE PRÓPRIA -->
         <p class="subtitle">🍄 Escolha o seu piloto favorito:</p>
         <div class="char-selection">
-            <button class="char-btn active" data-char="mario">🔴 Mario</button>
-            <button class="char-btn" data-char="luigi">🟢 Luigi</button>
-            <button class="char-btn" data-char="peach">👑 Peach</button>
+            <button class="char-btn active" data-char="mario">🔴 Max</button>
+            <button class="char-btn" data-char="luigi">🟢 Leon</button>
+            <button class="char-btn" data-char="peach">👑 Nova</button>
             <button class="char-btn" data-char="daisy">🌼 Daisy</button>
-            <button class="char-btn" data-char="yoshi">🦖 Yoshi</button>
-            <button class="char-btn" data-char="toad">🍄 Toad</button>
-            <button class="char-btn" data-char="bowser">🔥 Bowser</button>
-            <button class="char-btn" data-char="wario">⚡ Wario</button>
-            <button class="char-btn" data-char="donkey_kong">🍌 DK</button>
-            <button class="char-btn" data-char="custom">📷 Customizado</button>
-        </div>
-
-        <div id="custom-upload-panel">
-            <label>😐 Rosto Neutro: <input type="file" id="img-neutro" accept="image/*"></label>
-            <label>😃 Rosto Feliz: <input type="file" id="img-feliz" accept="image/*"></label>
-            <label>😭 Rosto Triste: <input type="file" id="img-triste" accept="image/*"></label>
+            <button class="char-btn" data-char="yoshi">🦖 Rex</button>
+            <button class="char-btn" data-char="toad">🍄 Pip</button>
+            <button class="char-btn" data-char="bowser">🔥 Vulcan</button>
+            <button class="char-btn" data-char="wario">⚡ Bolt</button>
+            <button class="char-btn" data-char="donkey_kong">🍌 Kong</button>
         </div>
 
         <button id="btn-start" class="btn-action">🎮 JOGAR AGORA!</button>
         <button id="btn-instructions" class="track-btn">📖 COMO JOGAR</button>
     </div>
 
-    <!-- MODAL DE INSTRUÇÕES (MANUAL) - ATUALIZADO COM A ESTRELA ⭐ -->
+    <!-- MODAL DE INSTRUÇÕES (MANUAL) -->
     <div id="instructions-modal">
         <div class="modal-content">
             <button id="btn-close-instructions" class="close-x-btn">✕</button>
@@ -121,30 +116,30 @@
             <h2>📖 MANUAL DE INSTRUÇÕES</h2>
 
             <div class="manual-body">
-                <p><strong>🏎️ Objetivo:</strong> Complete as 3 voltas da pista em 1º lugar, desviando dos obstáculos e
+                <p><strong>🏎️ Objetivo:</strong> Complete as voltas da pista em 1º lugar, desviando dos obstáculos e
                     usando itens estratégicos!</p>
                 <p><strong>🕹️ Controles (Teclado - W, A, S, D ou Setas):</strong></p>
                 <ul>
                     <li><strong>W / Seta Acima:</strong> Acelerar o Kart.</li>
                     <li><strong>S / Seta Abaixo:</strong> Frear / Marcha Ré.</li>
                     <li><strong>A / D ou Setas Esquerda/Direita:</strong> Virar o volante de forma fluida.</li>
-                    <li><strong>Espaço:</strong> Disparar Cascos (Verde/Vermelho).</li>
-                    <li><strong>Tecla B:</strong> Soltar Armadilha de Banana.</li>
-                    <li><strong>Shift Esquerdo:</strong> Usar Turbo (quando juntar 3 Cogumelos).</li>
-                    <li><strong>Tecla E:</strong> Ativar a Estrela de Invencibilidade ⭐.</li>
+                    <li><strong>Espaço:</strong> Disparar Projéteis.</li>
+                    <li><strong>Tecla B:</strong> Soltar Armadilha de Obstáculo.</li>
+                    <li><strong>Shift Esquerdo:</strong> Usar Turbo (quando juntar 3 itens de impulso).</li>
+                    <li><strong>Tecla E:</strong> Ativar o Escudo de Invencibilidade ⭐.</li>
                 </ul>
                 <p><strong>📱 Controles (Mobile / Touch):</strong></p>
                 <ul>
                     <li>Use o <strong>Joystick Analógico</strong> à esquerda para guiar.</li>
                     <li>Botões na tela para <strong>Frear</strong>, <strong>Turbo</strong>, <strong>Ativar
-                            Estrela</strong> e <strong>Banana</strong>.</li>
+                            Escudo</strong> e <strong>Armadilha</strong>.</li>
                 </ul>
                 <p><strong>🌟 Itens na Pista:</strong></p>
                 <ul>
                     <li>🪙 <strong>Moedas:</strong> Aumentam sua pontuação.</li>
                     <li>❓ <strong>Cubos Mistérios:</strong> Dão projéteis para atacar os rivais.</li>
-                    <li>🍄 <strong>Cogumelos:</strong> Colete 3 para ativar o Turbo supremo!</li>
-                    <li>⭐ <strong>Estrela:</strong> Dá super velocidade e imunidade contra armadilhas!</li>
+                    <li>🍄 <strong>Impulsos:</strong> Colete 3 para ativar o Turbo supremo!</li>
+                    <li>⭐ <strong>Escudo:</strong> Dá super velocidade e imunidade temporária!</li>
                     <li>🚀 <strong>Rampas:</strong> Fazem o kart saltar e ganham velocidade.</li>
                 </ul>
             </div>

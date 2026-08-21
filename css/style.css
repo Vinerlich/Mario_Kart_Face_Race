@@ -1,3 +1,4 @@
+/* --- CONFIGURAÇÕES GLOBAIS --- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -93,7 +94,7 @@ body, html {
     text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
 }
 
-/* Seleção de Pistas */
+/* --- SELEÇÃO DE PISTAS --- */
 .track-selection {
     display: flex;
     gap: 10px;
@@ -193,7 +194,7 @@ body, html {
     margin-left: 20px;
 }
 
-/* Apenas o X limpo e minimalista no canto superior direito */
+/* Botão de Fechar do Modal (X) */
 .close-x-btn {
     position: absolute;
     top: 15px;
@@ -214,7 +215,7 @@ body, html {
     transform: scale(1.2) rotate(90deg);
 }
 
-/* Seleção de Personagens */
+/* --- SELEÇÃO DE PERSONAGENS --- */
 .char-selection {
     display: flex;
     flex-wrap: wrap;
@@ -255,35 +256,7 @@ body, html {
     transform: scale(1.08);
 }
 
-#custom-upload-panel {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-    background: rgba(0, 0, 0, 0.75);
-    padding: 14px 20px;
-    border-radius: 16px;
-    border: 3px dashed #ffea00;
-    margin-bottom: 18px;
-    width: 100%;
-    max-width: 480px;
-}
-
-#custom-upload-panel label {
-    font-weight: 700;
-    font-size: clamp(0.85rem, 1.8vw, 0.95rem);
-    color: #fff;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: center;
-}
-
-#custom-upload-panel input[type="file"] {
-    font-size: 0.8rem;
-    color: #fff;
-    max-width: 60%;
-}
-
+/* --- BOTÃO DE AÇÃO PRINCIPAL --- */
 .btn-action {
     font-family: 'Luckiest Guy', cursive, sans-serif;
     letter-spacing: 1px;
@@ -442,7 +415,7 @@ body, html {
     color: #fff;
 }
 
-/* --- NOVO MODAL DE FIM DE JOGO (GAME OVER / VITÓRIA) --- */
+/* --- MODAL DE FIM DE JOGO (GAME OVER / VITÓRIA) --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -625,5 +598,4 @@ body, html {
     cursor: pointer;
 }
 
-#btn-accelerate { background: rgba(46, 139, 87, 0.7); }
 #btn-brake { background: rgba(220, 20, 60, 0.7); }
